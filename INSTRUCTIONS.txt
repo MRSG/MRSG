@@ -1,0 +1,15 @@
+
+To run the example, follow these steps:
+
+1) Make sure you have installed SimGrid (3.6.2 recommended).
+   (http://simgrid.gforge.inria.fr/)
+
+2) Inside MRSG's root and examples directories, edit the Makefiles and change
+   the INSTALL_PATH variable to match your SimGrid installation path
+   (e.g. /usr).
+
+3) Compile MRSG with 'make' in the command line, and then do the same for the
+   example.
+
+4) Execute the example (./hello.bin).
+

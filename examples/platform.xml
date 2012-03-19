@@ -1,0 +1,131 @@
+<?xml version='1.0'?>
+<!DOCTYPE platform SYSTEM "http://simgrid.gforge.inria.fr/simgrid.dtd">
+<platform version="3">
+  <AS id="AS0" routing="Full">
+
+	<host id="Host 0" power="1000000000.0" core="2" />
+	<host id="Host 1" power="1000000000.0" core="2" />
+	<host id="Host 2" power="1000000000.0" core="2" />
+	<host id="Host 3" power="1000000000.0" core="2" />
+	<host id="Host 4" power="1000000000.0" core="2" />
+	<host id="Host 5" power="1000000000.0" core="2" />
+
+	<link id="l1" bandwidth="125000000.0" latency="1e-4" />
+	<link id="l2" bandwidth="125000000.0" latency="1e-4" />
+	<link id="l3" bandwidth="125000000.0" latency="1e-4" />
+	<link id="l4" bandwidth="125000000.0" latency="1e-4" />
+	<link id="l5" bandwidth="125000000.0" latency="1e-4" />
+
+	<route src="Host 0" dst="Host 1">
+		<link_ctn id="l1"/>
+	</route>
+	<route src="Host 0" dst="Host 2">
+		<link_ctn id="l2"/>
+	</route>
+	<route src="Host 0" dst="Host 3">
+		<link_ctn id="l3"/>
+	</route>
+	<route src="Host 0" dst="Host 4">
+		<link_ctn id="l4"/>
+	</route>
+	<route src="Host 0" dst="Host 5">
+		<link_ctn id="l5"/>
+	</route>
+	<route src="Host 1" dst="Host 0">
+		<link_ctn id="l1"/>
+	</route>
+	<route src="Host 1" dst="Host 2">
+		<link_ctn id="l1"/>
+		<link_ctn id="l2"/>
+	</route>
+	<route src="Host 1" dst="Host 3">
+		<link_ctn id="l1"/>
+		<link_ctn id="l3"/>
+	</route>
+	<route src="Host 1" dst="Host 4">
+		<link_ctn id="l1"/>
+		<link_ctn id="l4"/>
+	</route>
+	<route src="Host 1" dst="Host 5">
+		<link_ctn id="l1"/>
+		<link_ctn id="l5"/>
+	</route>
+	<route src="Host 2" dst="Host 0">
+		<link_ctn id="l2"/>
+	</route>
+	<route src="Host 2" dst="Host 1">
+		<link_ctn id="l2"/>
+		<link_ctn id="l1"/>
+	</route>
+	<route src="Host 2" dst="Host 3">
+		<link_ctn id="l2"/>
+		<link_ctn id="l3"/>
+	</route>
+	<route src="Host 2" dst="Host 4">
+		<link_ctn id="l2"/>
+		<link_ctn id="l4"/>
+	</route>
+	<route src="Host 2" dst="Host 5">
+		<link_ctn id="l2"/>
+		<link_ctn id="l5"/>
+	</route>
+	<route src="Host 3" dst="Host 0">
+		<link_ctn id="l3"/>
+	</route>
+	<route src="Host 3" dst="Host 1">
+		<link_ctn id="l3"/>
+		<link_ctn id="l1"/>
+	</route>
+	<route src="Host 3" dst="Host 2">
+		<link_ctn id="l3"/>
+		<link_ctn id="l2"/>
+	</route>
+	<route src="Host 3" dst="Host 4">
+		<link_ctn id="l3"/>
+		<link_ctn id="l4"/>
+	</route>
+	<route src="Host 3" dst="Host 5">
+		<link_ctn id="l3"/>
+		<link_ctn id="l5"/>
+	</route>
+	<route src="Host 4" dst="Host 0">
+		<link_ctn id="l4"/>
+	</route>
+	<route src="Host 4" dst="Host 1">
+		<link_ctn id="l4"/>
+		<link_ctn id="l1"/>
+	</route>
+	<route src="Host 4" dst="Host 2">
+		<link_ctn id="l4"/>
+		<link_ctn id="l2"/>
+	</route>
+	<route src="Host 4" dst="Host 3">
+		<link_ctn id="l4"/>
+		<link_ctn id="l3"/>
+	</route>
+	<route src="Host 4" dst="Host 5">
+		<link_ctn id="l4"/>
+		<link_ctn id="l5"/>
+	</route>
+	<route src="Host 5" dst="Host 0">
+		<link_ctn id="l5"/>
+	</route>
+	<route src="Host 5" dst="Host 1">
+		<link_ctn id="l5"/>
+		<link_ctn id="l1"/>
+	</route>
+	<route src="Host 5" dst="Host 2">
+		<link_ctn id="l5"/>
+		<link_ctn id="l2"/>
+	</route>
+	<route src="Host 5" dst="Host 3">
+		<link_ctn id="l5"/>
+		<link_ctn id="l3"/>
+	</route>
+	<route src="Host 5" dst="Host 4">
+		<link_ctn id="l5"/>
+		<link_ctn id="l4"/>
+	</route>
+
+  </AS>
+</platform>
