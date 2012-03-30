@@ -26,8 +26,6 @@ static int compute (int argc, char* argv[]);
 static void get_chunk (task_info_t ti);
 static void get_pairs (task_info_t ti);
 static size_t ask_for_pairs (size_t wid, size_t maps_copied);
-static int acquire_slot_port (int* slots);
-static void release_slot_port (task_info_t ti);
 
 /**
  * @brief  Main worker function.
@@ -37,14 +35,18 @@ static void release_slot_port (task_info_t ti);
  */
 int worker (int argc, char* argv[])
 {
-    m_host_t          me;
-    m_process_t       listen_p;
-    m_process_t       data_node_p;
+    char         mailbox[MAILBOX_ALIAS_SIZE];
+    m_host_t     me;
+    m_process_t  listen_p;
+    m_process_t  data_node_p;
+    m_task_t     msg = NULL;
 
     me = MSG_host_self ();
 
     /* Wait until a start signal is sent by the master. */
-    MSG_task_destroy (receive (PORT_MASTER));
+    sprintf (mailbox, TASKTRACKER_MAILBOX, get_worker_id (me));
+    receive (&msg, mailbox);
+    MSG_task_destroy (msg);
 
     /* Spawn a process that listens for tasks. */
     listen_p = MSG_process_create ("listen", listen, NULL, me);
@@ -64,14 +66,9 @@ int worker (int argc, char* argv[])
  */
 static void heartbeat (void)
 {
-    size_t  my_id;
-
-    my_id = get_worker_id (MSG_host_self ());
-
     while (!job.finished)
     {
-	//FIXME No need to send data. w_heartbeat is global.
-	send (SMS_HEARTBEAT, 0.0, 0.0, &w_heartbeat[my_id], master_host, PORT_MASTER);
+	send_sms (SMS_HEARTBEAT, MASTER_MAILBOX);
 	MSG_process_sleep (config.heartbeat_interval);
     }
 }
@@ -81,28 +78,23 @@ static void heartbeat (void)
  */
 static int listen (int argc, char* argv[])
 {
-    int*         slots;
+    char         mailbox[MAILBOX_ALIAS_SIZE];
     m_host_t     me;
-    m_task_t     msg;
-    task_info_t  ti;
+    m_task_t     msg = NULL;
 
     me = MSG_host_self ();
-    slots = xbt_new0 (int, config.map_slots + config.reduce_slots);
+    sprintf (mailbox, TASKTRACKER_MAILBOX, get_worker_id (me));
 
     while (!job.finished)
     {
-	msg = receive (PORT_MASTER);
+	msg = NULL;
+	receive (&msg, mailbox);
 
 	if (message_is (msg, SMS_TASK))
 	{
-	    ti = (task_info_t) MSG_task_get_data (msg);
-	    ti->slots = slots;
-	    ti->slot_port = acquire_slot_port (slots);
 	    MSG_process_create ("compute", compute, msg, me);
 	}
     }
-
-    xbt_free_ref (&slots);
 
     return 0;
 }
@@ -118,6 +110,7 @@ static int compute (int argc, char* argv[])
 
     task = (m_task_t) MSG_process_get_data (MSG_process_self ());
     ti = (task_info_t) MSG_task_get_data (task);
+    ti->pid = MSG_process_self_PID ();
 
     switch (ti->phase)
     {
@@ -129,8 +122,6 @@ static int compute (int argc, char* argv[])
 	    get_pairs (ti);
 	    break;
     }
-
-    release_slot_port (ti);
 
     if (job.task_state[ti->phase][ti->id] != T_STATE_DONE)
     {
@@ -148,7 +139,7 @@ static int compute (int argc, char* argv[])
     w_heartbeat[ti->wid].slots_av[ti->phase]++;
     
     if (!job.finished)
-	send (SMS_TASK_DONE, 0.0, 0.0, ti, master_host, PORT_MASTER);
+	send (SMS_TASK_DONE, 0.0, 0.0, ti, MASTER_MAILBOX);
 
     return 0;
 }
@@ -159,7 +150,8 @@ static int compute (int argc, char* argv[])
  */
 static void get_chunk (task_info_t ti)
 {
-    m_task_t  data;
+    char      mailbox[MAILBOX_ALIAS_SIZE];
+    m_task_t  data = NULL;
     size_t    my_id;
 
     my_id = get_worker_id (MSG_host_self ());
@@ -167,8 +159,12 @@ static void get_chunk (task_info_t ti)
     /* Request the chunk to the source node. */
     if (ti->src != my_id)
     {
-	send_sms (SMS_GET_CHUNK, worker_hosts[ti->src], PORT_DATA_REQ); 
-	data = receive (ti->slot_port);
+	sprintf (mailbox, DATANODE_MAILBOX, ti->src);
+	send_sms (SMS_GET_CHUNK, mailbox); 
+
+	sprintf (mailbox, TASK_MAILBOX, my_id, MSG_process_self_PID ());
+	receive (&data, mailbox);
+	
 	MSG_task_destroy (data);
     }
 }
@@ -179,13 +175,16 @@ static void get_chunk (task_info_t ti)
  */
 static void get_pairs (task_info_t ti)
 {
-    m_task_t  data;
+    char      mailbox[MAILBOX_ALIAS_SIZE];
+    m_task_t  data = NULL;
     size_t    copy, total_copied;
     size_t    my_id;
     size_t    wid;
     size_t*   maps_copied;
 
     my_id = get_worker_id (MSG_host_self ());
+    sprintf (mailbox, TASK_MAILBOX, my_id, MSG_process_self_PID ());
+
     maps_copied = xbt_new0 (size_t, config.number_of_workers);
 
 #ifdef VERBOSE
@@ -211,7 +210,8 @@ static void get_pairs (task_info_t ti)
 
 		if (copy)
 		{
-		    data = receive (ti->slot_port);
+		    data = NULL;
+		    receive (&data, mailbox);
 		    maps_copied[wid] += copy;
 		    total_copied += copy;
 		    MSG_task_destroy (data);
@@ -235,54 +235,18 @@ static void get_pairs (task_info_t ti)
  */
 static size_t ask_for_pairs (size_t wid, size_t maps_copied)
 {
+    char    mailbox[MAILBOX_ALIAS_SIZE];
     size_t  copy;
 
     copy = stats.maps_processed[wid] - maps_copied;
 
     if (copy)
     {
-	send (SMS_GET_INTER_PAIRS, 0.0, 0.0, (void*) copy, worker_hosts[wid], PORT_DATA_REQ);
+	sprintf (mailbox, DATANODE_MAILBOX, wid);
+	send (SMS_GET_INTER_PAIRS, 0.0, 0.0, (void*) copy, mailbox);
 	return copy;
     }
 
     return 0;
-}
-
-/**
- * @brief  Acquire a port ID to use for data fetching.
- * @param  slots  The slots' availability list.
- * @return The ID of an available port.
- */
-static int acquire_slot_port (int* slots)
-{
-    int  slot;
-    int  total_slots;
-
-    total_slots = config.map_slots + config.reduce_slots;
-
-    for (slot = 0; slot < total_slots; slot++)
-    {
-	if (slots[slot] == 0)
-	{
-	    slots[slot] = 1;
-	    break;
-	}
-    }
-    
-    xbt_assert (slot < total_slots, "Error getting a slot port.");
-
-    return PORT_SLOTS_START + slot;
-}
-
-/**
- * @brief  Release the data fetching port of a task.
- * @param  ti  The task information.
- */
-static void release_slot_port (task_info_t ti)
-{
-    int  slot;
-
-    slot = ti->slot_port - PORT_SLOTS_START;
-    ti->slots[slot] = 0;
 }
 

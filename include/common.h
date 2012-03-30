@@ -25,7 +25,7 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 #include "mrsg.h"
 
 
-/* Short message names  */
+/* Short message names. */
 #define SMS_START "SMS-S"
 #define SMS_GET_CHUNK "SMS-GC"
 #define SMS_GET_INTER_PAIRS "SMS-GIP"
@@ -35,6 +35,13 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 
 #define NONE (-1)
 #define MAX_SPECULATIVE_COPIES 3
+
+/* Mailbox related. */
+#define MAILBOX_ALIAS_SIZE 256
+#define MASTER_MAILBOX "MASTER"
+#define DATANODE_MAILBOX "%zu:DN"
+#define TASKTRACKER_MAILBOX "%zu:TT"
+#define TASK_MAILBOX "%zu:%d"
 
 /** @brief  Communication ports. */
 enum port_e {
@@ -69,11 +76,10 @@ struct job_s {
 /** @brief  Information sent as the task data. */
 struct task_info_s {
     enum phase_e  phase;
-    int           slot_port;
-    int*          slots;
     size_t        id;
     size_t        src;
     size_t        wid;
+    int           pid;
     m_task_t      task;
 };
 
@@ -115,29 +121,28 @@ size_t get_worker_id (m_host_t worker);
 
 /** 
  * @brief  Send a message/task.
- * @param  str   The message.
- * @param  cpu   The amount of cpu required by the task.
- * @param  net   The message size in bytes.
- * @param  data  Any data to attatch to the message.
- * @param  dest  The destination host.
- * @param  port  The destination port.
+ * @param  str      The message.
+ * @param  cpu      The amount of cpu required by the task.
+ * @param  net      The message size in bytes.
+ * @param  data     Any data to attatch to the message.
+ * @param  mailbox  The destination mailbox alias.
  */
-void send (const char* str, double cpu, double net, void* data, m_host_t dest, int port);
+void send (const char* str, double cpu, double net, void* data, const char* mailbox);
 
 /** 
  * @brief  Send a short message, of size zero.
- * @param  str   The message.
- * @param  dest  The destination host.
- * @param  port  The destination port.
+ * @param  str      The message.
+ * @param  mailbox  The destination mailbox alias.
  */
-void send_sms (const char* str, m_host_t dest, int port);
+void send_sms (const char* str, const char* mailbox);
 
 /** 
- * @brief  Receive a message/task.
- * @param  port  The port to listen.
- * @return The received message/task.
+ * @brief  Receive a message/task from a mailbox.
+ * @param  msg      Where to store the received message.
+ * @param  mailbox  The mailbox alias.
+ * @return The status of the transfer.
  */
-m_task_t receive (int port);
+MSG_error_t receive (m_task_t* msg, const char* mailbox);
 
 /** 
  * @brief  Compare the message from a task with a string.

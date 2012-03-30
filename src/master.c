@@ -38,10 +38,11 @@ static void finish_all_task_copies (task_info_t ti);
 /** @brief  Main master function. */
 int master (int argc, char* argv[])
 {
+    char         mailbox[MAILBOX_ALIAS_SIZE];
     FILE*        log;
     heartbeat_t  heartbeat;
     m_host_t     worker;
-    m_task_t     msg;
+    m_task_t     msg = NULL;
     size_t       wid;
     task_info_t  ti;
 
@@ -49,19 +50,23 @@ int master (int argc, char* argv[])
     XBT_INFO ("JOB BEGIN"); XBT_INFO (" ");
 
     for (wid = 0; wid < config.number_of_workers; wid++)
-	send_sms (SMS_START, worker_hosts[wid], PORT_MASTER);
+    {
+	sprintf (mailbox, TASKTRACKER_MAILBOX, wid);
+	send_sms (SMS_START, mailbox);
+    }
 
     gantt_log = fopen ("gantt.log", "w");
 
     while (job.tasks_pending[MAP] + job.tasks_pending[REDUCE] > 0)
     {
-	msg = receive (PORT_MASTER);
+	msg = NULL;
+	receive (&msg, MASTER_MAILBOX);
 	worker = MSG_task_get_source (msg);
 	wid = get_worker_id (worker);
 
 	if (message_is (msg, SMS_HEARTBEAT))
 	{
-	    heartbeat = (heartbeat_t) MSG_task_get_data (msg);
+	    heartbeat = &w_heartbeat[wid];
 
 	    if (is_straggler (worker))
 	    {
@@ -404,6 +409,7 @@ static void send_reduce_to_worker (m_host_t dest)
  */
 static void send_task (enum phase_e phase, size_t tid, size_t data_src, m_host_t dest)
 {
+    char         mailbox[MAILBOX_ALIAS_SIZE];
     int          i;
     double       cpu_required = 0.0;
     m_task_t     task = NULL;
@@ -455,9 +461,8 @@ static void send_task (enum phase_e phase, size_t tid, size_t data_src, m_host_t
     XBT_INFO ("TX: %s > %s", SMS_TASK, MSG_host_get_name (dest));
 #endif
 
-    xbt_assert (
-	    MSG_task_put (task, dest, PORT_MASTER) == MSG_OK,
-	    "ERROR SENDING MESSAGE");
+    sprintf (mailbox, TASKTRACKER_MAILBOX, wid);
+    xbt_assert (MSG_task_send (task, mailbox) == MSG_OK, "ERROR SENDING MESSAGE");
 }
 
 /**

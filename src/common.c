@@ -24,7 +24,7 @@ size_t get_worker_id (m_host_t worker)
     return (size_t) MSG_host_get_data (worker);
 }
 
-void send (const char* str, double cpu, double net, void* data, m_host_t dest, int port)
+void send (const char* str, double cpu, double net, void* data, const char* mailbox)
 {
     m_task_t  msg = NULL;
 
@@ -32,24 +32,22 @@ void send (const char* str, double cpu, double net, void* data, m_host_t dest, i
 
 #ifdef VERBOSE
     if (!message_is (msg, SMS_HEARTBEAT))
-	    XBT_INFO ("TX (%d): %s > %s", port, str, MSG_host_get_name (dest));
+	    XBT_INFO ("TX (%s): %s > %s", mailbox, str, MSG_host_get_name (dest));
 #endif
 
-    xbt_assert (MSG_task_put (msg, dest, port) == MSG_OK, "ERROR SENDING MESSAGE");
+    xbt_assert (MSG_task_send (msg, mailbox) == MSG_OK, "ERROR SENDING MESSAGE");
 }
 
-void send_sms (const char* str, m_host_t dest, int port)
+void send_sms (const char* str, const char* mailbox)
 {
-    send (str, 0.0, 0.0, NULL, dest, port);
+    send (str, 0.0, 0.0, NULL, mailbox);
 }
 
-m_task_t receive (int port)
+MSG_error_t receive (m_task_t* msg, const char* mailbox)
 {
-    m_task_t  msg = NULL;
+    xbt_assert (MSG_task_receive (msg, mailbox) == MSG_OK, "ERROR RECEIVING MESSAGE");
 
-    xbt_assert (MSG_task_get (&msg, port) == MSG_OK, "ERROR RECEIVING MESSAGE");
-
-    return msg;
+    return MSG_OK;
 }
 
 int message_is (m_task_t msg, const char* str)

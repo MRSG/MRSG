@@ -75,7 +75,6 @@ static MSG_error_t run_simulation (const char* platform_file, const char* deploy
 
     read_mr_config_file (mr_config_file);
 
-    MSG_set_channel_number (2 + config.map_slots + config.reduce_slots);
     MSG_create_environment (platform_file);
 
     //FIXME: Application deployment.
