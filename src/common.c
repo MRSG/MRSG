@@ -32,7 +32,7 @@ void send (const char* str, double cpu, double net, void* data, const char* mail
 
 #ifdef VERBOSE
     if (!message_is (msg, SMS_HEARTBEAT))
-	    XBT_INFO ("TX (%s): %s > %s", mailbox, str, MSG_host_get_name (dest));
+	    XBT_INFO ("TX (%s): %s", mailbox, str);
 #endif
 
     xbt_assert (MSG_task_send (msg, mailbox) == MSG_OK, "ERROR SENDING MESSAGE");
