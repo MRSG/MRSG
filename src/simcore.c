@@ -145,14 +145,6 @@ static void read_mr_config_file (const char* file_name)
 	    fscanf (file, "%lg", &map_out_perc);
 	    config.map_out_size = (map_out_perc / 100) * config.chunk_count * config.chunk_size;
 	}
-	else if ( strcmp (property, "map_cost") == 0 )
-	{
-	    fscanf (file, "%lg", &config.cpu_required_map);
-	}
-	else if ( strcmp (property, "reduce_cost") == 0 )
-	{
-	    fscanf (file, "%lg", &config.cpu_required_reduce);
-	}
 	else if ( strcmp (property, "map_slots") == 0 )
 	{
 	    fscanf (file, "%d", &config.map_slots);
@@ -225,8 +217,6 @@ static void init_config (void)
 
     xbt_free_ref (&ht);
 
-    config.cpu_required_map *= config.chunk_size;
-    config.cpu_required_reduce *= (config.map_out_size / config.number_of_reduces);
     config.grid_average_speed = config.grid_cpu_power / config.number_of_workers;
     config.heartbeat_interval = maxval (3, config.number_of_workers / 100);
     config.number_of_maps = config.chunk_count;

@@ -61,8 +61,6 @@ enum task_state_e {
 
 struct config_s {
     double  chunk_size;
-    double  cpu_required_map;
-    double  cpu_required_reduce;
     double  grid_average_speed;
     double  grid_cpu_power;
     double  map_out_size;
