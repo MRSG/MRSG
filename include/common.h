@@ -50,12 +50,6 @@ enum port_e {
     PORT_SLOTS_START
 };
 
-/** @brief  Possible execution phases. */
-enum phase_e {
-    MAP,
-    REDUCE
-};
-
 /** @brief  Possible task states. */
 enum task_state_e {
     /* The initial state must be the first enum. */
@@ -121,7 +115,7 @@ struct stats_s {
 } stats;
 
 struct user_s {
-    double (*task_cost_f)(int phase, size_t tid, size_t wid);
+    double (*task_cost_f)(enum phase_e phase, size_t tid, size_t wid);
     void (*dfs_f)(char** dfs_matrix, size_t chunks, size_t workers, int replicas);
 } user;
 

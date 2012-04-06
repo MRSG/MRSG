@@ -25,7 +25,7 @@ void MRSG_init (void)
     user.dfs_f = default_dfs_f;
 }
 
-void MRSG_set_task_cost_f ( double (*f)(int phase, size_t tid, size_t wid) )
+void MRSG_set_task_cost_f ( double (*f)(enum phase_e phase, size_t tid, size_t wid) )
 {
     user.task_cost_f = f;
 }

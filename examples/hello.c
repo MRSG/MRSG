@@ -1,9 +1,6 @@
 #include <mrsg.h>
 
-#define MAP 0
-#define REDUCE 1
-
-double my_task_cost_function (int phase, size_t tid, size_t wid)
+double my_task_cost_function (enum phase_e phase, size_t tid, size_t wid)
 {
     switch (phase)
     {
