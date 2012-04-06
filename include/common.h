@@ -65,6 +65,23 @@ enum task_state_e {
     T_STATE_DONE
 };
 
+struct config_s {
+    double  chunk_size;
+    double  cpu_required_map;
+    double  cpu_required_reduce;
+    double  grid_average_speed;
+    double  grid_cpu_power;
+    double  map_out_size;
+    int     chunk_count;
+    int     chunk_replicas;
+    int     heartbeat_interval;
+    int     map_slots;
+    int     number_of_maps;
+    int     number_of_reduces;
+    int     number_of_workers;
+    int     reduce_slots;
+} config;
+
 struct job_s {
     int         finished;
     int         tasks_pending[2];
