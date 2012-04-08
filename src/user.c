@@ -35,3 +35,8 @@ void MRSG_set_dfs_f ( void (*f)(char** dfs_matrix, size_t chunks, size_t workers
     user.dfs_f = f;
 }
 
+void MRSG_set_map_output_f ( int (*f)(size_t mid, size_t rid) )
+{
+    user.map_output_f = f;
+}
+

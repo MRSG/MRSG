@@ -62,6 +62,7 @@ int MRSG_main (const char* plat, const char* depl, const char* conf)
 static void check_config (void)
 {
     xbt_assert (user.task_cost_f != NULL, "Task cost function not specified.");
+    xbt_assert (user.map_output_f != NULL, "Map output function not specified.");
 }
 
 /**
@@ -113,7 +114,6 @@ static void read_mr_config_file (const char* file_name)
     char    property[256];
     char    value[MAX_LINE_SIZE];
     char    *s1, *s2;
-    double  map_out_perc;
     FILE*   file;
 
     file = fopen (file_name, "r");
@@ -139,11 +139,6 @@ static void read_mr_config_file (const char* file_name)
 	else if ( strcmp (property, "dfs_replicas") == 0 )
 	{
 	    fscanf (file, "%d", &config.chunk_replicas);
-	}
-	else if ( strcmp (property, "map_output") == 0 )
-	{
-	    fscanf (file, "%lg", &map_out_perc);
-	    config.map_out_size = (map_out_perc / 100) * config.chunk_count * config.chunk_size;
 	}
 	else if ( strcmp (property, "map_slots") == 0 )
 	{
@@ -238,6 +233,10 @@ static void init_job (void)
     job.task_list[MAP] = xbt_new0 (m_task_t*, MAX_SPECULATIVE_COPIES);
     for (i = 0; i < MAX_SPECULATIVE_COPIES; i++)
 	job.task_list[MAP][i] = xbt_new0 (m_task_t, config.number_of_maps);
+
+    job.map_output = xbt_new (size_t*, config.number_of_workers);
+    for (i = 0; i < config.number_of_workers; i++)
+	job.map_output[i] = xbt_new0 (size_t, config.number_of_reduces);
 
     /* Initialize reduce information. */
     job.tasks_pending[REDUCE] = config.number_of_reduces;

@@ -119,9 +119,12 @@ int data_node (int argc, char* argv[])
 
 void send_data (m_task_t msg)
 {
-    char    mailbox[MAILBOX_ALIAS_SIZE];
-    double  data_size;
-    size_t  maps_requested;
+    char         mailbox[MAILBOX_ALIAS_SIZE];
+    double       data_size;
+    size_t       my_id;
+    task_info_t  ti;
+
+    my_id = get_worker_id (MSG_host_self ());
 
     sprintf (mailbox, TASK_MAILBOX,
 	    get_worker_id (MSG_task_get_source (msg)),
@@ -133,9 +136,8 @@ void send_data (m_task_t msg)
     }
     else if (message_is (msg, SMS_GET_INTER_PAIRS))
     {
-	maps_requested = (size_t) MSG_task_get_data (msg);
-	data_size = (config.map_out_size / config.number_of_maps / config.number_of_reduces)
-	    * maps_requested;
+	ti = (task_info_t) MSG_task_get_data (msg);
+	data_size = job.map_output[my_id][ti->id] - ti->map_output_copied[my_id];
 	MSG_task_dsend (MSG_task_create ("DATA-IP", 0.0, data_size, NULL), mailbox, NULL);
     }
 

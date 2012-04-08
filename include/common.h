@@ -63,7 +63,6 @@ struct config_s {
     double  chunk_size;
     double  grid_average_speed;
     double  grid_cpu_power;
-    double  map_out_size;
     int     chunk_count;
     int     chunk_replicas;
     int     heartbeat_interval;
@@ -80,6 +79,7 @@ struct job_s {
     int*        task_has_spec_copy[2];
     int*        task_state[2];
     m_task_t**  task_list[2];
+    size_t**    map_output;
 } job;
 
 /** @brief  Information sent as the task data. */
@@ -90,6 +90,7 @@ struct task_info_s {
     size_t        wid;
     int           pid;
     m_task_t      task;
+    size_t*       map_output_copied;
 };
 
 typedef struct task_info_s* task_info_t;
@@ -115,6 +116,7 @@ struct stats_s {
 struct user_s {
     double (*task_cost_f)(enum phase_e phase, size_t tid, size_t wid);
     void (*dfs_f)(char** dfs_matrix, size_t chunks, size_t workers, int replicas);
+    int (*map_output_f)(size_t mid, size_t rid);
 } user;
 
 m_host_t     master_host;

@@ -23,9 +23,9 @@ XBT_LOG_EXTERNAL_DEFAULT_CATEGORY (msg_test);
 static void heartbeat (void);
 static int listen (int argc, char* argv[]);
 static int compute (int argc, char* argv[]);
+static void update_map_output (m_host_t worker, size_t mid);
 static void get_chunk (task_info_t ti);
-static void get_pairs (task_info_t ti);
-static size_t ask_for_pairs (size_t wid, size_t maps_copied);
+static void get_map_output (task_info_t ti);
 
 /**
  * @brief  Main worker function.
@@ -104,6 +104,7 @@ static int listen (int argc, char* argv[])
  */
 static int compute (int argc, char* argv[])
 {
+    MSG_error_t  error;
     m_task_t     task;
     task_info_t  ti;
     xbt_ex_t     e;
@@ -119,7 +120,7 @@ static int compute (int argc, char* argv[])
 	    break;
 
 	case REDUCE:
-	    get_pairs (ti);
+	    get_map_output (ti);
 	    break;
     }
 
@@ -127,7 +128,10 @@ static int compute (int argc, char* argv[])
     {
 	TRY
 	{
-	    MSG_task_execute (task);
+	    error = MSG_task_execute (task);
+
+	    if (ti->phase == MAP && error == MSG_OK)
+		update_map_output (MSG_host_self (), ti->id);
 	}
 	CATCH (e)
 	{
@@ -142,6 +146,17 @@ static int compute (int argc, char* argv[])
 	send (SMS_TASK_DONE, 0.0, 0.0, ti, MASTER_MAILBOX);
 
     return 0;
+}
+
+static void update_map_output (m_host_t worker, size_t mid)
+{
+    size_t  rid;
+    size_t  wid;
+
+    wid = get_worker_id (worker);
+
+    for (rid = 0; rid < config.number_of_reduces; rid++)
+	job.map_output[wid][rid] += user.map_output_f (mid, rid);
 }
 
 /**
@@ -173,80 +188,58 @@ static void get_chunk (task_info_t ti)
  * @brief  Copy the itermediary pairs for a reduce task.
  * @param  ti  The task information.
  */
-static void get_pairs (task_info_t ti)
+static void get_map_output (task_info_t ti)
 {
     char      mailbox[MAILBOX_ALIAS_SIZE];
     m_task_t  data = NULL;
-    size_t    copy, total_copied;
+    size_t    total_copied, must_copy;
+    size_t    mid;
     size_t    my_id;
     size_t    wid;
-    size_t*   maps_copied;
+    size_t*   data_copied;
 
     my_id = get_worker_id (MSG_host_self ());
-    sprintf (mailbox, TASK_MAILBOX, my_id, MSG_process_self_PID ());
-
-    maps_copied = xbt_new0 (size_t, config.number_of_workers);
+    data_copied = xbt_new0 (size_t, config.number_of_workers);
+    ti->map_output_copied = data_copied;
+    total_copied = 0;
+    must_copy = 0;
+    for (mid = 0; mid < config.number_of_maps; mid++)
+	must_copy += user.map_output_f (mid, ti->id);
 
 #ifdef VERBOSE
     XBT_INFO ("INFO: start copy");
 #endif
-    total_copied = 0;
-    for (wid = 0; wid < config.number_of_workers; wid++)
-	maps_copied[wid] = 0;
 
-    while (job.tasks_pending[MAP] > 0 || (total_copied + stats.maps_processed[my_id]) < config.number_of_maps)
+    while (total_copied < must_copy)
     {
 	for (wid = 0; wid < config.number_of_workers; wid++)
 	{
-	    if (wid != my_id)
+	    if (job.task_state[REDUCE][ti->id] == T_STATE_DONE)
 	    {
-		if (job.task_state[REDUCE][ti->id] == T_STATE_DONE)
-		{
-		    xbt_free_ref (&maps_copied);
-		    return;
-		}
+		xbt_free_ref (&data_copied);
+		return;
+	    }
 
-		copy = ask_for_pairs (wid, maps_copied[wid]);
+	    if (job.map_output[wid][ti->id] > data_copied[wid])
+	    {
+		sprintf (mailbox, DATANODE_MAILBOX, wid);
+		send (SMS_GET_INTER_PAIRS, 0.0, 0.0, ti, mailbox);
 
-		if (copy)
-		{
-		    data = NULL;
-		    receive (&data, mailbox);
-		    maps_copied[wid] += copy;
-		    total_copied += copy;
-		    MSG_task_destroy (data);
-		}
+		sprintf (mailbox, TASK_MAILBOX, my_id, MSG_process_self_PID ());
+		data = NULL;
+		receive (&data, mailbox);
+		data_copied[wid] += MSG_task_get_data_size (data);
+		total_copied += MSG_task_get_data_size (data);
+		MSG_task_destroy (data);
 	    }
 	}
 	MSG_process_sleep (config.heartbeat_interval);
     }
+
 #ifdef VERBOSE
-    XBT_INFO ("INFO: copy finished (%zu)", total_copied);
+    XBT_INFO ("INFO: copy finished");
 #endif
 
-    xbt_free_ref (&maps_copied);
-}
-
-/**
- * @brief  Ask for itermediary pairs.
- * @param  wid          The worker (ID) to whom we'll ask for pairs.
- * @param  maps_copied  The amount of Map results (pair sets) already copied.
- * @return The amount of Map results copied on this request.
- */
-static size_t ask_for_pairs (size_t wid, size_t maps_copied)
-{
-    char    mailbox[MAILBOX_ALIAS_SIZE];
-    size_t  copy;
-
-    copy = stats.maps_processed[wid] - maps_copied;
-
-    if (copy)
-    {
-	sprintf (mailbox, DATANODE_MAILBOX, wid);
-	send (SMS_GET_INTER_PAIRS, 0.0, 0.0, (void*) copy, mailbox);
-	return copy;
-    }
-
-    return 0;
+    xbt_free_ref (&data_copied);
 }
 

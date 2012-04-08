@@ -152,7 +152,6 @@ static void print_config (void)
     XBT_INFO ("chunk size: %.0f MB", config.chunk_size/1024/1024);
     XBT_INFO ("input chunks: %d", config.chunk_count);
     XBT_INFO ("input size: %d MB", config.chunk_count * (int)(config.chunk_size/1024/1024));
-    XBT_INFO ("map output: %.0f MB", config.map_out_size/1024/1024);
     XBT_INFO ("maps: %d", config.number_of_maps);
     XBT_INFO ("reduces: %d", config.number_of_reduces);
     XBT_INFO ("workers: %d", config.number_of_workers);
@@ -419,17 +418,6 @@ static void send_task (enum phase_e phase, size_t tid, size_t data_src, m_host_t
     wid = get_worker_id (dest);
 
     cpu_required = user.task_cost_f (phase, tid, wid);
-
-    switch (phase)
-    {
-	case MAP:
-	    cpu_required *= config.chunk_size;
-	    break;
-
-	case REDUCE:
-	    cpu_required *= (config.map_out_size / config.number_of_reduces);
-	    break;
-    }
 
     task_info = xbt_new (struct task_info_s, 1);
     task = MSG_task_create (SMS_TASK, cpu_required, 0.0, (void*) task_info);
