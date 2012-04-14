@@ -59,6 +59,9 @@ int MRSG_main (const char* plat, const char* depl, const char* conf)
 	return 1;
 }
 
+/**
+ * @brief Check if the user configuration is sound.
+ */
 static void check_config (void)
 {
     xbt_assert (user.task_cost_f != NULL, "Task cost function not specified.");

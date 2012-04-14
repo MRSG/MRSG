@@ -148,6 +148,11 @@ static int compute (int argc, char* argv[])
     return 0;
 }
 
+/**
+ * @brief  Update the amount of data produced by a mapper.
+ * @param  worker  The worker that finished a map task.
+ * @param  mid     The ID of map task.
+ */
 static void update_map_output (m_host_t worker, size_t mid)
 {
     size_t  rid;

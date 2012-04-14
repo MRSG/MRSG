@@ -455,7 +455,7 @@ static void send_task (enum phase_e phase, size_t tid, size_t data_src, m_host_t
 
 /**
  * @brief  Kill all copies of a task.
- * @param  task  Any of the task's copies.
+ * @param  ti  The task information of any task instance.
  */
 static void finish_all_task_copies (task_info_t ti)
 {
