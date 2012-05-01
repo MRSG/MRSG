@@ -22,7 +22,7 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 XBT_LOG_EXTERNAL_DEFAULT_CATEGORY (msg_test);
 
 
-void send_data (m_task_t msg);
+static void send_data (m_task_t msg);
 
 
 void distribute_data (void)
@@ -117,7 +117,7 @@ int data_node (int argc, char* argv[])
     return 0;
 }
 
-void send_data (m_task_t msg)
+static void send_data (m_task_t msg)
 {
     char         mailbox[MAILBOX_ALIAS_SIZE];
     double       data_size;
