@@ -35,18 +35,11 @@ static void get_map_output (task_info_t ti);
  */
 int worker (int argc, char* argv[])
 {
-    char         mailbox[MAILBOX_ALIAS_SIZE];
     m_host_t     me;
     m_process_t  listen_p;
     m_process_t  data_node_p;
-    m_task_t     msg = NULL;
 
     me = MSG_host_self ();
-
-    /* Wait until a start signal is sent by the master. */
-    sprintf (mailbox, TASKTRACKER_MAILBOX, get_worker_id (me));
-    receive (&msg, mailbox);
-    MSG_task_destroy (msg);
 
     /* Spawn a process that listens for tasks. */
     listen_p = MSG_process_create ("listen", listen, NULL, me);

@@ -26,7 +26,6 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 
 
 /* Short message names. */
-#define SMS_START "SMS-S"
 #define SMS_GET_CHUNK "SMS-GC"
 #define SMS_GET_INTER_PAIRS "SMS-GIP"
 #define SMS_HEARTBEAT "SMS-HB"

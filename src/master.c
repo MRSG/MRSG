@@ -38,7 +38,6 @@ static void finish_all_task_copies (task_info_t ti);
 /** @brief  Main master function. */
 int master (int argc, char* argv[])
 {
-    char         mailbox[MAILBOX_ALIAS_SIZE];
     FILE*        log;
     heartbeat_t  heartbeat;
     m_host_t     worker;
@@ -48,12 +47,6 @@ int master (int argc, char* argv[])
 
     print_config ();
     XBT_INFO ("JOB BEGIN"); XBT_INFO (" ");
-
-    for (wid = 0; wid < config.number_of_workers; wid++)
-    {
-	sprintf (mailbox, TASKTRACKER_MAILBOX, wid);
-	send_sms (SMS_START, mailbox);
-    }
 
     gantt_log = fopen ("gantt.log", "w");
 
