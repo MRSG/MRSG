@@ -49,13 +49,13 @@ enum port_e {
     PORT_SLOTS_START
 };
 
-/** @brief  Possible task states. */
-enum task_state_e {
-    /* The initial state must be the first enum. */
-    T_STATE_PENDING,
-    T_STATE_TIP,
-    T_STATE_TIP_SLOW,
-    T_STATE_DONE
+/** @brief  Possible task status. */
+enum task_status_e {
+    /* The initial status must be the first enum. */
+    T_STATUS_PENDING,
+    T_STATUS_TIP,
+    T_STATUS_TIP_SLOW,
+    T_STATUS_DONE
 };
 
 struct config_s {
@@ -76,7 +76,7 @@ struct job_s {
     int         finished;
     int         tasks_pending[2];
     int*        task_has_spec_copy[2];
-    int*        task_state[2];
+    int*        task_status[2];
     m_task_t**  task_list[2];
     size_t**    map_output;
 } job;

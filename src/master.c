@@ -81,9 +81,9 @@ int master (int argc, char* argv[])
 	    switch (ti->phase)
 	    {
 		case MAP:
-		    if (job.task_state[MAP][ti->id] != T_STATE_DONE)
+		    if (job.task_status[MAP][ti->id] != T_STATUS_DONE)
 		    {
-			job.task_state[MAP][ti->id] = T_STATE_DONE;
+			job.task_status[MAP][ti->id] = T_STATUS_DONE;
 			finish_all_task_copies (ti);
 			stats.maps_processed[wid]++;
 			job.tasks_pending[MAP]--;
@@ -97,9 +97,9 @@ int master (int argc, char* argv[])
 		    break;
 
 		case REDUCE:
-		    if (job.task_state[REDUCE][ti->id] != T_STATE_DONE)
+		    if (job.task_status[REDUCE][ti->id] != T_STATUS_DONE)
 		    {
-			job.task_state[REDUCE][ti->id] = T_STATE_DONE;
+			job.task_status[REDUCE][ti->id] = T_STATUS_DONE;
 			finish_all_task_copies (ti);
 			stats.reduces_processed[wid]++;
 			job.tasks_pending[REDUCE]--;
@@ -225,7 +225,7 @@ static void set_speculative_tasks (m_host_t worker)
 		ti = (task_info_t) MSG_task_get_data (job.task_list[MAP][0][tid]);
 		if (ti->wid == wid && task_time_elapsed (job.task_list[MAP][0][tid]) > 60)
 		{
-		    job.task_state[MAP][tid] = T_STATE_TIP_SLOW;
+		    job.task_status[MAP][tid] = T_STATUS_TIP_SLOW;
 		}
 	    }
 	}
@@ -240,7 +240,7 @@ static void set_speculative_tasks (m_host_t worker)
 		ti = (task_info_t) MSG_task_get_data (job.task_list[REDUCE][0][tid]);
 		if (ti->wid == wid && task_time_elapsed (job.task_list[REDUCE][0][tid]) > 60)
 		{
-		    job.task_state[REDUCE][tid] = T_STATE_TIP_SLOW;
+		    job.task_status[REDUCE][tid] = T_STATUS_TIP_SLOW;
 		}
 	    }
 	}
@@ -271,7 +271,7 @@ static void send_map_to_worker (m_host_t dest)
     /* Look for a task for the worker. */
     for (chunk = 0; chunk < config.chunk_count; chunk++)
     {
-	if (job.task_state[MAP][chunk] == T_STATE_PENDING)
+	if (job.task_status[MAP][chunk] == T_STATUS_PENDING)
 	{
 	    if (chunk_owner[chunk][wid])
 	    {
@@ -285,7 +285,7 @@ static void send_map_to_worker (m_host_t dest)
 		tid = chunk;
 	    }
 	}
-	else if (job.task_state[MAP][chunk] == T_STATE_TIP_SLOW
+	else if (job.task_status[MAP][chunk] == T_STATUS_TIP_SLOW
 		&& task_type > REMOTE
 		&& !job.task_has_spec_copy[MAP][chunk])
 	{
@@ -357,13 +357,13 @@ static void send_reduce_to_worker (m_host_t dest)
 
     for (t = 0; t < config.number_of_reduces; t++)
     {
-	if (job.task_state[REDUCE][t] == T_STATE_PENDING)
+	if (job.task_status[REDUCE][t] == T_STATUS_PENDING)
 	{
 	    task_type = NORMAL;
 	    tid = t;
 	    break;
 	}
-	else if (job.task_state[REDUCE][t] == T_STATE_TIP_SLOW
+	else if (job.task_status[REDUCE][t] == T_STATUS_TIP_SLOW
 		&& !job.task_has_spec_copy[REDUCE][t])
 	{
 	    task_type = SPECULATIVE;
@@ -422,8 +422,8 @@ static void send_task (enum phase_e phase, size_t tid, size_t data_src, m_host_t
     task_info->task = task;
 
 
-    if (job.task_state[phase][tid] != T_STATE_TIP_SLOW)
-	job.task_state[phase][tid] = T_STATE_TIP;
+    if (job.task_status[phase][tid] != T_STATUS_TIP_SLOW)
+	job.task_status[phase][tid] = T_STATUS_TIP;
 
     w_heartbeat[wid].slots_av[phase]--;
 

@@ -117,7 +117,7 @@ static int compute (int argc, char* argv[])
 	    break;
     }
 
-    if (job.task_state[ti->phase][ti->id] != T_STATE_DONE)
+    if (job.task_status[ti->phase][ti->id] != T_STATUS_DONE)
     {
 	TRY
 	{
@@ -212,7 +212,7 @@ static void get_map_output (task_info_t ti)
     {
 	for (wid = 0; wid < config.number_of_workers; wid++)
 	{
-	    if (job.task_state[REDUCE][ti->id] == T_STATE_DONE)
+	    if (job.task_status[REDUCE][ti->id] == T_STATUS_DONE)
 	    {
 		xbt_free_ref (&data_copied);
 		return;

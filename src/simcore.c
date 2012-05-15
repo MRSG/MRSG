@@ -231,7 +231,7 @@ static void init_job (void)
 
     /* Initialize map information. */
     job.tasks_pending[MAP] = config.number_of_maps;
-    job.task_state[MAP] = xbt_new0 (int, config.number_of_maps);
+    job.task_status[MAP] = xbt_new0 (int, config.number_of_maps);
     job.task_has_spec_copy[MAP] = xbt_new0 (int, config.number_of_maps);
     job.task_list[MAP] = xbt_new0 (m_task_t*, MAX_SPECULATIVE_COPIES);
     for (i = 0; i < MAX_SPECULATIVE_COPIES; i++)
@@ -243,7 +243,7 @@ static void init_job (void)
 
     /* Initialize reduce information. */
     job.tasks_pending[REDUCE] = config.number_of_reduces;
-    job.task_state[REDUCE] = xbt_new0 (int, config.number_of_reduces);
+    job.task_status[REDUCE] = xbt_new0 (int, config.number_of_reduces);
     job.task_has_spec_copy[REDUCE] = xbt_new0 (int, config.number_of_reduces);
     job.task_list[REDUCE] = xbt_new0 (m_task_t*, MAX_SPECULATIVE_COPIES);
     for (i = 0; i < MAX_SPECULATIVE_COPIES; i++)
@@ -279,9 +279,9 @@ static void free_global_mem (void)
     xbt_free_ref (&stats.maps_processed);
 
     xbt_free_ref (&worker_hosts);
-    xbt_free_ref (&job.task_state[MAP]);
+    xbt_free_ref (&job.task_status[MAP]);
     xbt_free_ref (&job.task_has_spec_copy[MAP]);
-    xbt_free_ref (&job.task_state[REDUCE]);
+    xbt_free_ref (&job.task_status[REDUCE]);
     xbt_free_ref (&job.task_has_spec_copy[REDUCE]);
     xbt_free_ref (&w_heartbeat);
     for (i = 0; i < MAX_SPECULATIVE_COPIES; i++)
