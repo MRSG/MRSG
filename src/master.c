@@ -23,7 +23,7 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 
 XBT_LOG_EXTERNAL_DEFAULT_CATEGORY (msg_test);
 
-static FILE*       gantt_log;
+static FILE*       tasks_log;
 
 static void print_config (void);
 static void print_stats (void);
@@ -38,7 +38,6 @@ static void finish_all_task_copies (task_info_t ti);
 /** @brief  Main master function. */
 int master (int argc, char* argv[])
 {
-    FILE*        log;
     heartbeat_t  heartbeat;
     m_host_t     worker;
     m_task_t     msg = NULL;
@@ -48,7 +47,7 @@ int master (int argc, char* argv[])
     print_config ();
     XBT_INFO ("JOB BEGIN"); XBT_INFO (" ");
 
-    gantt_log = fopen ("gantt.log", "w");
+    tasks_log = fopen ("tasks.log", "w");
 
     while (job.tasks_pending[MAP] + job.tasks_pending[REDUCE] > 0)
     {
@@ -117,17 +116,9 @@ int master (int argc, char* argv[])
 	MSG_task_destroy (msg);
     }
 
-    fclose (gantt_log);
+    fclose (tasks_log);
 
     job.finished = 1;
-
-    /* Log the tasks processed. */
-    log = fopen ("tasks.log", "w");
-    xbt_assert (log != NULL, "Error creating log file.");
-    fprintf (log, "    WORKER \t MAP \t REDUCE\n");
-    for (wid = 0; wid < config.number_of_workers; wid++)
-	fprintf (log, "%10s \t %d \t %d\n", MSG_host_get_name (worker_hosts[wid]), stats.maps_processed[wid], stats.reduces_processed[wid]);
-    fclose (log);
 
     print_config ();
     print_stats ();
@@ -436,7 +427,7 @@ static void send_task (enum phase_e phase, size_t tid, size_t data_src, m_host_t
 	}
     }
 
-    fprintf (gantt_log, "%d_%zu_%d\t%d\t%g\tA\n", phase, tid, i, phase+1, MSG_get_clock ());
+    fprintf (tasks_log, "%d_%zu_%d\t%s\t%zu\t%.3f\tSTART\n", phase, tid, i, (phase==MAP?"MAP":"REDUCE"), wid, MSG_get_clock ());
 
 #ifdef VERBOSE
     XBT_INFO ("TX: %s > %s", SMS_TASK, MSG_host_get_name (dest));
@@ -463,7 +454,7 @@ static void finish_all_task_copies (task_info_t ti)
 	    MSG_task_cancel (job.task_list[phase][i][tid]);
 	    //FIXME: MSG_task_destroy (job.task_list[phase][i][tid]);
 	    job.task_list[phase][i][tid] = NULL;
-	    fprintf (gantt_log, "%d_%zu_%d\t%d\t%g\tB\n", ti->phase, tid, i, ti->phase+1, MSG_get_clock ());
+	    fprintf (tasks_log, "%d_%zu_%d\t-\t-\t%.3f\tEND\n", ti->phase, tid, i, MSG_get_clock ());
 	}
     }
 }
