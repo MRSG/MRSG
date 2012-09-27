@@ -70,6 +70,7 @@ struct config_s {
     int     number_of_reduces;
     int     number_of_workers;
     int     reduce_slots;
+    int     initialized;
 } config;
 
 struct job_s {

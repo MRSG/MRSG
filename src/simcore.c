@@ -47,6 +47,8 @@ int MRSG_main (const char* plat, const char* depl, const char* conf)
     char* argv[] = {"MRSG"};
     MSG_error_t  res = MSG_OK;
 
+    config.initialized = 0;
+
     check_config ();
 
     MSG_global_init (&argc, argv);
@@ -81,7 +83,6 @@ static MSG_error_t run_simulation (const char* platform_file, const char* deploy
 
     MSG_create_environment (platform_file);
 
-    //FIXME: Application deployment.
     MSG_function_register ("master", master);
     MSG_function_register ("worker", worker);
     MSG_launch_application (deploy_file);
@@ -196,7 +197,7 @@ static void init_config (void)
 
     for (i = wid = 0; i < host_count; i++)
     {
-	/*FIXME Skip the master node. */
+	/* Skip the master node. */
 	if ( strcmp(master_name, MSG_host_get_name(ht[i])) != 0 )
 	{
 	    worker_hosts[wid] = ht[i];
@@ -218,6 +219,7 @@ static void init_config (void)
     config.grid_average_speed = config.grid_cpu_power / config.number_of_workers;
     config.heartbeat_interval = maxval (3, config.number_of_workers / 100);
     config.number_of_maps = config.chunk_count;
+    config.initialized = 1;
 }
 
 /**
@@ -226,6 +228,8 @@ static void init_config (void)
 static void init_job (void)
 {
     int  i;
+
+    xbt_assert (config.initialized, "init_config has to be called before init_job");
 
     job.finished = 0;
 
@@ -255,6 +259,8 @@ static void init_job (void)
  */
 static void init_stats (void)
 {
+    xbt_assert (config.initialized, "init_config has to be called before init_stats");
+
     stats.map_local = 0;
     stats.map_remote = 0;
     stats.map_spec_l = 0;
