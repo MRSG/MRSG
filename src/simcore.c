@@ -120,18 +120,24 @@ static void read_mr_config_file (const char* file_name)
     char    *s1, *s2;
     FILE*   file;
 
+    /* Set the default configuration. */
+    config.chunk_size = 67108864;
+    config.chunk_count = 0;
+    config.chunk_replicas = 3;
+    config.map_slots = 2;
+    config.number_of_reduces = 1;
+    config.reduce_slots = 2;
+    master_name[0] = '\0';
+
+    /* Read the user configuration file. */
+
     file = fopen (file_name, "r");
 
     xbt_assert (file != NULL, "Error reading cofiguration file: %s", file_name);
 
-    //TODO assert values
     while ( fscanf (file, "%256s", property) != EOF )
     {
-	if ( strcmp (property, "reduces") == 0 )
-	{
-	    fscanf (file, "%d", &config.number_of_reduces);
-	}
-	else if ( strcmp (property, "chunk_size") == 0 )
+	if ( strcmp (property, "chunk_size") == 0 )
 	{
 	    fscanf (file, "%lg", &config.chunk_size);
 	    config.chunk_size *= 1024 * 1024; /* MB -> bytes */
@@ -147,6 +153,10 @@ static void read_mr_config_file (const char* file_name)
 	else if ( strcmp (property, "map_slots") == 0 )
 	{
 	    fscanf (file, "%d", &config.map_slots);
+	}
+	else if ( strcmp (property, "reduces") == 0 )
+	{
+	    fscanf (file, "%d", &config.number_of_reduces);
 	}
 	else if ( strcmp (property, "reduce_slots") == 0 )
 	{
@@ -168,6 +178,16 @@ static void read_mr_config_file (const char* file_name)
     }
 
     fclose (file);
+
+    /* Assert the configuration values. */
+
+    xbt_assert (config.chunk_size > 0, "Chunk size must be greater than zero");
+    xbt_assert (config.chunk_count > 0, "The amount of input chunks must be greater than zero");
+    xbt_assert (config.chunk_replicas > 0, "The amount of chunk replicas must be greater than zero");
+    xbt_assert (config.map_slots > 0, "Map slots must be greater than zero");
+    xbt_assert (config.number_of_reduces >= 0, "The number of reduce tasks can't be negative");
+    xbt_assert (config.reduce_slots > 0, "Reduce slots must be greater than zero");
+    xbt_assert (master_name[0] != '\0', "The master node was not specified");
 }
 
 /**
