@@ -27,8 +27,6 @@ XBT_LOG_NEW_DEFAULT_CATEGORY (msg_test, "MRSG");
 
 #define MAX_LINE_SIZE 256
 
-static char master_name[MAX_LINE_SIZE];
-
 int master (int argc, char *argv[]);
 int worker (int argc, char *argv[]);
 
@@ -37,6 +35,7 @@ static MSG_error_t run_simulation (const char* platform_file, const char* deploy
 static void init_mr_config (const char* mr_config_file);
 static void read_mr_config_file (const char* file_name);
 static void init_config (void);
+static char* get_process_name (m_host_t host);
 static void init_job (void);
 static void init_stats (void);
 static void free_global_mem (void);
@@ -116,8 +115,6 @@ static void init_mr_config (const char* mr_config_file)
 static void read_mr_config_file (const char* file_name)
 {
     char    property[256];
-    char    value[MAX_LINE_SIZE];
-    char    *s1, *s2;
     FILE*   file;
 
     /* Set the default configuration. */
@@ -127,7 +124,6 @@ static void read_mr_config_file (const char* file_name)
     config.map_slots = 2;
     config.number_of_reduces = 1;
     config.reduce_slots = 2;
-    master_name[0] = '\0';
 
     /* Read the user configuration file. */
 
@@ -162,14 +158,6 @@ static void read_mr_config_file (const char* file_name)
 	{
 	    fscanf (file, "%d", &config.reduce_slots);
 	}
-	else if ( strcmp (property, "master") == 0 )
-	{
-	    fgets (value, MAX_LINE_SIZE, file);
-	    s1 = strchr (value, '"') + 1;
-	    s2 = strchr (s1, '"');
-	    *s2 = '\0';
-	    strcpy (master_name, s1);
-	}
 	else
 	{
 	    printf ("Error: Property %s is not valid. (in %s)", property, file_name);
@@ -187,7 +175,6 @@ static void read_mr_config_file (const char* file_name)
     xbt_assert (config.map_slots > 0, "Map slots must be greater than zero");
     xbt_assert (config.number_of_reduces >= 0, "The number of reduce tasks can't be negative");
     xbt_assert (config.reduce_slots > 0, "Reduce slots must be greater than zero");
-    xbt_assert (master_name[0] != '\0', "The master node was not specified");
 }
 
 /**
@@ -195,6 +182,7 @@ static void read_mr_config_file (const char* file_name)
  */
 static void init_config (void)
 {
+    char*      process_name;
     int        host_count;
     m_host_t*  ht;
     size_t     i, wid;
@@ -202,7 +190,20 @@ static void init_config (void)
     /* Initialize workers information. */
 
     host_count = MSG_get_host_number();
-    config.number_of_workers = host_count - 1;
+    ht = MSG_get_host_table();
+
+    config.number_of_workers = 0;
+    for (i = 0; i < host_count; i++)
+    {
+	process_name = get_process_name (ht[i]);
+	if (process_name != NULL)
+	{
+	    if ( strcmp (process_name, "worker") == 0 )
+		config.number_of_workers++;
+	    else
+		master_host = ht[i];
+	}
+    }
 
     w_heartbeat = xbt_new (struct heartbeat_s, config.number_of_workers);
     for (wid = 0; wid < config.number_of_workers; wid++)
@@ -212,13 +213,12 @@ static void init_config (void)
     }
 
     worker_hosts = xbt_new (m_host_t, config.number_of_workers);
-    ht = MSG_get_host_table();
     config.grid_cpu_power = 0.0;
 
     for (i = wid = 0; i < host_count; i++)
     {
-	/* Skip the master node. */
-	if ( strcmp(master_name, MSG_host_get_name(ht[i])) != 0 )
+	process_name = get_process_name (ht[i]);
+	if ( (process_name != NULL) && (strcmp (process_name, "worker") == 0) )
 	{
 	    worker_hosts[wid] = ht[i];
 	    /* Set the worker ID as its data. */
@@ -228,10 +228,6 @@ static void init_config (void)
 
 	    wid++;
 	}
-	else
-	{
-	    master_host = ht[i];
-	}
     }
 
     xbt_free_ref (&ht);
@@ -240,6 +236,40 @@ static void init_config (void)
     config.heartbeat_interval = maxval (3, config.number_of_workers / 100);
     config.number_of_maps = config.chunk_count;
     config.initialized = 1;
+}
+
+/**
+ * @brief  Get the name of the first process of a host.
+ * @param  host  The host.
+ * @return The pointer to the process name, or NULL if there is
+ *         no process associated with the host.
+ */
+static char* get_process_name (m_host_t host)
+{
+    int d1, d2;
+
+    /*
+       >                         d1                  d2
+       ht[0]->simdata->smx_host->process_list->head->name
+       64bit shift     0         16            0     72
+       32bit shift     0         8             0     40
+     */
+
+    if (sizeof(size_t) == 8) /* 64 bit machine */
+    {
+	d1 = 16;
+	d2 = 72;
+    }
+    else /* 32 bit machine */
+    {
+	d1 = 8;
+	d2 = 40;
+    }
+
+    if ( (size_t*)(*(size_t*)(*(size_t*)(*(size_t*)host->simdata+d1)+0)) != NULL )
+	return (char*)(*(size_t*)(*(size_t*)(*(size_t*)(*(size_t*)host->simdata+d1)+0)+d2));
+
+    return NULL;
 }
 
 /**
