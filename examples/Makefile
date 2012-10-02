@@ -5,7 +5,9 @@ INCLUDES = -I../include
 DEFS = -L$(INSTALL_PATH)/lib
 LDADD = -lm -lsimgrid
 
-hello.bin: hello.c
+all: hello.bin
+
+%.bin: %.c
 	$(CC) $(INCLUDES) $(DEFS) -o $@ $^ ../libmrsg.a $(LDADD)
 
 clean:
