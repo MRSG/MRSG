@@ -191,6 +191,7 @@ static void init_config (void)
 
     host_count = MSG_get_host_number();
     ht = MSG_get_host_table();
+    master_host = NULL;
 
     config.number_of_workers = 0;
     for (i = 0; i < host_count; i++)
@@ -204,6 +205,8 @@ static void init_config (void)
 		master_host = ht[i];
 	}
     }
+
+    xbt_assert (master_host, "UNABLE TO IDENTIFY THE MASTER NODE");
 
     w_heartbeat = xbt_new (struct heartbeat_s, config.number_of_workers);
     for (wid = 0; wid < config.number_of_workers; wid++)
