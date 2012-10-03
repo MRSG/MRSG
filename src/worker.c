@@ -231,7 +231,8 @@ static void get_map_output (task_info_t ti)
 		MSG_task_destroy (data);
 	    }
 	}
-	MSG_process_sleep (config.heartbeat_interval);
+	/* (Hadoop 0.20.2) mapred/ReduceTask.java:1979 */
+	MSG_process_sleep (5);
     }
 
 #ifdef VERBOSE
