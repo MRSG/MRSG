@@ -35,7 +35,7 @@ static MSG_error_t run_simulation (const char* platform_file, const char* deploy
 static void init_mr_config (const char* mr_config_file);
 static void read_mr_config_file (const char* file_name);
 static void init_config (void);
-static char* get_process_name (m_host_t host);
+static const char* get_process_name (m_host_t host);
 static void init_job (void);
 static void init_stats (void);
 static void free_global_mem (void);
@@ -182,27 +182,28 @@ static void read_mr_config_file (const char* file_name)
  */
 static void init_config (void)
 {
-    char*      process_name;
-    int        host_count;
-    m_host_t*  ht;
-    size_t     i, wid;
+    const char*   process_name = NULL;
+    m_host_t      host;
+    size_t        wid;
+    unsigned int  cursor;
+    xbt_dynar_t   host_list;
 
-    /* Initialize workers information. */
+    /* Initialize hosts information. */
 
-    host_count = MSG_get_host_number();
-    ht = MSG_get_host_table();
     master_host = NULL;
-
     config.number_of_workers = 0;
-    for (i = 0; i < host_count; i++)
+
+    host_list = MSG_hosts_as_dynar ();
+
+    xbt_dynar_foreach (host_list, cursor, host)
     {
-	process_name = get_process_name (ht[i]);
+	process_name = get_process_name (host);
 	if (process_name != NULL)
 	{
 	    if ( strcmp (process_name, "worker") == 0 )
 		config.number_of_workers++;
-	    else
-		master_host = ht[i];
+	    else if ( strcmp (process_name, "master") == 0 )
+		master_host = host;
 	}
     }
 
@@ -218,12 +219,13 @@ static void init_config (void)
     worker_hosts = xbt_new (m_host_t, config.number_of_workers);
     config.grid_cpu_power = 0.0;
 
-    for (i = wid = 0; i < host_count; i++)
+    wid = 0;
+    xbt_dynar_foreach (host_list, cursor, host)
     {
-	process_name = get_process_name (ht[i]);
+	process_name = get_process_name (host);
 	if ( (process_name != NULL) && (strcmp (process_name, "worker") == 0) )
 	{
-	    worker_hosts[wid] = ht[i];
+	    worker_hosts[wid] = host;
 	    /* Set the worker ID as its data. */
 	    MSG_host_set_data (worker_hosts[wid], (void*) wid);
 	    /* Add the worker's cpu power to the grid total. */
@@ -232,8 +234,6 @@ static void init_config (void)
 	    wid++;
 	}
     }
-
-    xbt_free_ref (&ht);
 
     config.grid_average_speed = config.grid_cpu_power / config.number_of_workers;
     config.heartbeat_interval = maxval (3, config.number_of_workers / 100);
@@ -247,30 +247,33 @@ static void init_config (void)
  * @return The pointer to the process name, or NULL if there is
  *         no process associated with the host.
  */
-static char* get_process_name (m_host_t host)
+static const char* get_process_name (m_host_t host)
 {
-    int d1, d2;
+    int d1;
 
     /*
-       >                         d1                  d2
-       ht[0]->simdata->smx_host->process_list->head->name
-       64bit shift     0         16            0     72
-       32bit shift     0         8             0     40
+       >               d1
+       host->smx_host->process_list->head
+       64bit           16            0
+       32bit           8             0
      */
 
-    if (sizeof(size_t) == 8) /* 64 bit machine */
+    switch (sizeof(void*))
     {
-	d1 = 16;
-	d2 = 72;
-    }
-    else /* 32 bit machine */
-    {
-	d1 = 8;
-	d2 = 40;
+	case 4:
+	    /* 32 bit machine */
+	    d1 = 8;
+	    break;
+	case 8:
+	    /* 64 bit machine */
+	    d1 = 16;
+	    break;
+	default:
+	    xbt_abort ();
     }
 
-    if ( (size_t*)(*(size_t*)(*(size_t*)(*(size_t*)host->simdata+d1)+0)) != NULL )
-	return (char*)(*(size_t*)(*(size_t*)(*(size_t*)(*(size_t*)host->simdata+d1)+0)+d2));
+    if ( (void*)(*(size_t*)(*(size_t*)((void*)host->smx_host + d1))) != NULL )
+	return MSG_process_get_name ((m_process_t) (*(size_t*)(*(size_t*)((void*)host->smx_host + d1))));
 
     return NULL;
 }
