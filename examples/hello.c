@@ -10,7 +10,7 @@
  */
 int my_map_output_function (size_t mid, size_t rid)
 {
-    return 6710886;
+    return 4*1024*1024;
 }
 
 
@@ -27,10 +27,10 @@ double my_task_cost_function (enum phase_e phase, size_t tid, size_t wid)
     switch (phase)
     {
 	case MAP:
-	    return 16777216000;
+	    return 1e+11;
 
 	case REDUCE:
-	    return 67108864000;
+	    return 5e+11;
     }
 }
 
@@ -43,7 +43,7 @@ int main (int argc, char* argv[])
     /* Set the map output function. */
     MRSG_set_map_output_f (my_map_output_function);
     /* Run the simulation. */
-    MRSG_main ("platform.xml", "deploy.xml", "mrsg.conf");
+    MRSG_main ("g5k.xml", "g5k-deploy.xml", "hello.conf");
 
     return 0;
 }
