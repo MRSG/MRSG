@@ -91,6 +91,7 @@ struct task_info_s {
     int           pid;
     m_task_t      task;
     size_t*       map_output_copied;
+    double        shuffle_end;
 };
 
 typedef struct task_info_s* task_info_t;

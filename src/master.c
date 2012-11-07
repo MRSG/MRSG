@@ -411,6 +411,7 @@ static void send_task (enum phase_e phase, size_t tid, size_t data_src, m_host_t
     task_info->src = data_src;
     task_info->wid = wid;
     task_info->task = task;
+    task_info->shuffle_end = 0.0;
 
 
     if (job.task_status[phase][tid] != T_STATUS_TIP_SLOW)
@@ -454,7 +455,7 @@ static void finish_all_task_copies (task_info_t ti)
 	    MSG_task_cancel (job.task_list[phase][i][tid]);
 	    //FIXME: MSG_task_destroy (job.task_list[phase][i][tid]);
 	    job.task_list[phase][i][tid] = NULL;
-	    fprintf (tasks_log, "%d_%zu_%d\t-\t-\t%.3f\tEND\n", ti->phase, tid, i, MSG_get_clock ());
+	    fprintf (tasks_log, "%d_%zu_%d\t-\t-\t%.3f\tEND\t%.3f\n", ti->phase, tid, i, MSG_get_clock (), ti->shuffle_end);
 	}
     }
 }

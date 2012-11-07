@@ -238,6 +238,7 @@ static void get_map_output (task_info_t ti)
 #ifdef VERBOSE
     XBT_INFO ("INFO: copy finished");
 #endif
+    ti->shuffle_end = MSG_get_clock ();
 
     xbt_free_ref (&data_copied);
 }
