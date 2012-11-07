@@ -11,5 +11,7 @@ To run the example, follow these steps:
 3) Compile MRSG with 'make' in the command line, and then do the same for the
    example.
 
-4) Execute the example (./hello.bin).
+4) Copy the g5k.xml platform from SimGrid's examples into MRSG's examples folder.
+
+5) Execute the example (./hello.bin).
 
