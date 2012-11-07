@@ -107,7 +107,7 @@ int data_node (int argc, char* argv[])
 
     sprintf (mailbox, DATANODE_MAILBOX, get_worker_id (MSG_host_self ()));
 
-    while (!job.finished)
+    while (1)
     {
 	msg = NULL;
 	receive (&msg, mailbox);

@@ -74,7 +74,6 @@ struct config_s {
 } config;
 
 struct job_s {
-    int         finished;
     int         tasks_pending[2];
     int*        task_has_spec_copy[2];
     int*        task_status[2];

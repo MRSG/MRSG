@@ -59,7 +59,7 @@ int worker (int argc, char* argv[])
  */
 static void heartbeat (void)
 {
-    while (!job.finished)
+    while (1)
     {
 	send_sms (SMS_HEARTBEAT, MASTER_MAILBOX);
 	MSG_process_sleep (config.heartbeat_interval);
@@ -78,7 +78,7 @@ static int listen (int argc, char* argv[])
     me = MSG_host_self ();
     sprintf (mailbox, TASKTRACKER_MAILBOX, get_worker_id (me));
 
-    while (!job.finished)
+    while (1)
     {
 	msg = NULL;
 	receive (&msg, mailbox);
@@ -135,8 +135,7 @@ static int compute (int argc, char* argv[])
 
     w_heartbeat[ti->wid].slots_av[ti->phase]++;
     
-    if (!job.finished)
-	send (SMS_TASK_DONE, 0.0, 0.0, ti, MASTER_MAILBOX);
+    send (SMS_TASK_DONE, 0.0, 0.0, ti, MASTER_MAILBOX);
 
     return 0;
 }
