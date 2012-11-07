@@ -31,11 +31,11 @@ int master (int argc, char *argv[]);
 int worker (int argc, char *argv[]);
 
 static void check_config (void);
-static MSG_error_t run_simulation (const char* platform_file, const char* deploy_file, const char* mr_config_file);
+static msg_error_t run_simulation (const char* platform_file, const char* deploy_file, const char* mr_config_file);
 static void init_mr_config (const char* mr_config_file);
 static void read_mr_config_file (const char* file_name);
 static void init_config (void);
-static const char* get_process_name (m_host_t host);
+static const char* get_process_name (msg_host_t host);
 static void init_job (void);
 static void init_stats (void);
 static void free_global_mem (void);
@@ -44,15 +44,14 @@ int MRSG_main (const char* plat, const char* depl, const char* conf)
 {
     int argc = 0;
     char* argv[] = {"MRSG"};
-    MSG_error_t  res = MSG_OK;
+    msg_error_t  res = MSG_OK;
 
     config.initialized = 0;
 
     check_config ();
 
-    MSG_global_init (&argc, argv);
+    MSG_init (&argc, argv);
     res = run_simulation (plat, depl, conf);
-    MSG_clean ();
 
     if (res == MSG_OK)
 	return 0;
@@ -74,9 +73,9 @@ static void check_config (void)
  * @param  deploy_file     The path/name of the deploy file.
  * @param  mr_config_file  The path/name of the configuration file.
  */
-static MSG_error_t run_simulation (const char* platform_file, const char* deploy_file, const char* mr_config_file)
+static msg_error_t run_simulation (const char* platform_file, const char* deploy_file, const char* mr_config_file)
 {
-    MSG_error_t  res = MSG_OK;
+    msg_error_t  res = MSG_OK;
 
     read_mr_config_file (mr_config_file);
 
@@ -183,7 +182,7 @@ static void read_mr_config_file (const char* file_name)
 static void init_config (void)
 {
     const char*   process_name = NULL;
-    m_host_t      host;
+    msg_host_t      host;
     size_t        wid;
     unsigned int  cursor;
     xbt_dynar_t   host_list;
@@ -216,7 +215,7 @@ static void init_config (void)
 	w_heartbeat[wid].slots_av[REDUCE] = config.reduce_slots;
     }
 
-    worker_hosts = xbt_new (m_host_t, config.number_of_workers);
+    worker_hosts = xbt_new (msg_host_t, config.number_of_workers);
     config.grid_cpu_power = 0.0;
 
     wid = 0;
@@ -247,7 +246,7 @@ static void init_config (void)
  * @return The pointer to the process name, or NULL if there is
  *         no process associated with the host.
  */
-static const char* get_process_name (m_host_t host)
+static const char* get_process_name (msg_host_t host)
 {
     int d1;
 
@@ -273,7 +272,7 @@ static const char* get_process_name (m_host_t host)
     }
 
     if ( (void*)(*(size_t*)(*(size_t*)((void*)host->smx_host + d1))) != NULL )
-	return MSG_process_get_name ((m_process_t) (*(size_t*)(*(size_t*)((void*)host->smx_host + d1))));
+	return MSG_process_get_name ((msg_process_t) (*(size_t*)(*(size_t*)((void*)host->smx_host + d1))));
 
     return NULL;
 }
@@ -293,9 +292,9 @@ static void init_job (void)
     job.tasks_pending[MAP] = config.number_of_maps;
     job.task_status[MAP] = xbt_new0 (int, config.number_of_maps);
     job.task_has_spec_copy[MAP] = xbt_new0 (int, config.number_of_maps);
-    job.task_list[MAP] = xbt_new0 (m_task_t*, MAX_SPECULATIVE_COPIES);
+    job.task_list[MAP] = xbt_new0 (msg_task_t*, MAX_SPECULATIVE_COPIES);
     for (i = 0; i < MAX_SPECULATIVE_COPIES; i++)
-	job.task_list[MAP][i] = xbt_new0 (m_task_t, config.number_of_maps);
+	job.task_list[MAP][i] = xbt_new0 (msg_task_t, config.number_of_maps);
 
     job.map_output = xbt_new (size_t*, config.number_of_workers);
     for (i = 0; i < config.number_of_workers; i++)
@@ -305,9 +304,9 @@ static void init_job (void)
     job.tasks_pending[REDUCE] = config.number_of_reduces;
     job.task_status[REDUCE] = xbt_new0 (int, config.number_of_reduces);
     job.task_has_spec_copy[REDUCE] = xbt_new0 (int, config.number_of_reduces);
-    job.task_list[REDUCE] = xbt_new0 (m_task_t*, MAX_SPECULATIVE_COPIES);
+    job.task_list[REDUCE] = xbt_new0 (msg_task_t*, MAX_SPECULATIVE_COPIES);
     for (i = 0; i < MAX_SPECULATIVE_COPIES; i++)
-	job.task_list[REDUCE][i] = xbt_new0 (m_task_t, config.number_of_reduces);
+	job.task_list[REDUCE][i] = xbt_new0 (msg_task_t, config.number_of_reduces);
 }
 
 /**

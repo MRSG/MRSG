@@ -23,7 +23,7 @@ XBT_LOG_EXTERNAL_DEFAULT_CATEGORY (msg_test);
 static void heartbeat (void);
 static int listen (int argc, char* argv[]);
 static int compute (int argc, char* argv[]);
-static void update_map_output (m_host_t worker, size_t mid);
+static void update_map_output (msg_host_t worker, size_t mid);
 static void get_chunk (task_info_t ti);
 static void get_map_output (task_info_t ti);
 
@@ -35,9 +35,9 @@ static void get_map_output (task_info_t ti);
  */
 int worker (int argc, char* argv[])
 {
-    m_host_t     me;
-    m_process_t  listen_p;
-    m_process_t  data_node_p;
+    msg_host_t     me;
+    msg_process_t  listen_p;
+    msg_process_t  data_node_p;
 
     me = MSG_host_self ();
 
@@ -72,8 +72,8 @@ static void heartbeat (void)
 static int listen (int argc, char* argv[])
 {
     char         mailbox[MAILBOX_ALIAS_SIZE];
-    m_host_t     me;
-    m_task_t     msg = NULL;
+    msg_host_t     me;
+    msg_task_t     msg = NULL;
 
     me = MSG_host_self ();
     sprintf (mailbox, TASKTRACKER_MAILBOX, get_worker_id (me));
@@ -97,12 +97,12 @@ static int listen (int argc, char* argv[])
  */
 static int compute (int argc, char* argv[])
 {
-    MSG_error_t  error;
-    m_task_t     task;
+    msg_error_t  error;
+    msg_task_t     task;
     task_info_t  ti;
     xbt_ex_t     e;
 
-    task = (m_task_t) MSG_process_get_data (MSG_process_self ());
+    task = (msg_task_t) MSG_process_get_data (MSG_process_self ());
     ti = (task_info_t) MSG_task_get_data (task);
     ti->pid = MSG_process_self_PID ();
 
@@ -146,7 +146,7 @@ static int compute (int argc, char* argv[])
  * @param  worker  The worker that finished a map task.
  * @param  mid     The ID of map task.
  */
-static void update_map_output (m_host_t worker, size_t mid)
+static void update_map_output (msg_host_t worker, size_t mid)
 {
     size_t  rid;
     size_t  wid;
@@ -164,7 +164,7 @@ static void update_map_output (m_host_t worker, size_t mid)
 static void get_chunk (task_info_t ti)
 {
     char      mailbox[MAILBOX_ALIAS_SIZE];
-    m_task_t  data = NULL;
+    msg_task_t  data = NULL;
     size_t    my_id;
 
     my_id = get_worker_id (MSG_host_self ());
@@ -189,7 +189,7 @@ static void get_chunk (task_info_t ti)
 static void get_map_output (task_info_t ti)
 {
     char      mailbox[MAILBOX_ALIAS_SIZE];
-    m_task_t  data = NULL;
+    msg_task_t  data = NULL;
     size_t    total_copied, must_copy;
     size_t    mid;
     size_t    my_id;

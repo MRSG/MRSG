@@ -19,14 +19,14 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 
 XBT_LOG_EXTERNAL_DEFAULT_CATEGORY (msg_test);
 
-size_t get_worker_id (m_host_t worker)
+size_t get_worker_id (msg_host_t worker)
 {
     return (size_t) MSG_host_get_data (worker);
 }
 
 void send (const char* str, double cpu, double net, void* data, const char* mailbox)
 {
-    m_task_t  msg = NULL;
+    msg_task_t  msg = NULL;
 
     msg = MSG_task_create (str, cpu, net, data);
 
@@ -43,14 +43,14 @@ void send_sms (const char* str, const char* mailbox)
     send (str, 0.0, 0.0, NULL, mailbox);
 }
 
-MSG_error_t receive (m_task_t* msg, const char* mailbox)
+msg_error_t receive (msg_task_t* msg, const char* mailbox)
 {
     xbt_assert (MSG_task_receive (msg, mailbox) == MSG_OK, "ERROR RECEIVING MESSAGE");
 
     return MSG_OK;
 }
 
-int message_is (m_task_t msg, const char* str)
+int message_is (msg_task_t msg, const char* str)
 {
     if (strcmp (MSG_task_get_name (msg), str) == 0)
 	return 1;

@@ -27,20 +27,20 @@ static FILE*       tasks_log;
 
 static void print_config (void);
 static void print_stats (void);
-static int is_straggler (m_host_t worker);
-static int task_time_elapsed (m_task_t task);
-static void set_speculative_tasks (m_host_t worker);
-static void send_map_to_worker (m_host_t dest);
-static void send_reduce_to_worker (m_host_t dest);
-static void send_task (enum phase_e phase, size_t tid, size_t data_src, m_host_t dest);
+static int is_straggler (msg_host_t worker);
+static int task_time_elapsed (msg_task_t task);
+static void set_speculative_tasks (msg_host_t worker);
+static void send_map_to_worker (msg_host_t dest);
+static void send_reduce_to_worker (msg_host_t dest);
+static void send_task (enum phase_e phase, size_t tid, size_t data_src, msg_host_t dest);
 static void finish_all_task_copies (task_info_t ti);
 
 /** @brief  Main master function. */
 int master (int argc, char* argv[])
 {
     heartbeat_t  heartbeat;
-    m_host_t     worker;
-    m_task_t     msg = NULL;
+    msg_host_t     worker;
+    msg_task_t     msg = NULL;
     size_t       wid;
     task_info_t  ti;
 
@@ -165,7 +165,7 @@ static void print_stats (void)
  * @param  worker  The worker to be probed.
  * @return 1 if true, 0 if false.
  */
-static int is_straggler (m_host_t worker)
+static int is_straggler (msg_host_t worker)
 {
     int     task_count;
     size_t  wid;
@@ -185,7 +185,7 @@ static int is_straggler (m_host_t worker)
  * @param  task  The task to be probed.
  * @return The amount of seconds since the beginning of the computation.
  */
-static int task_time_elapsed (m_task_t task)
+static int task_time_elapsed (msg_task_t task)
 {
     task_info_t  ti;
 
@@ -199,7 +199,7 @@ static int task_time_elapsed (m_task_t task)
  * @brief  Mark the tasks of a straggler as possible speculative tasks.
  * @param  worker  The straggler worker.
  */
-static void set_speculative_tasks (m_host_t worker)
+static void set_speculative_tasks (msg_host_t worker)
 {
     size_t       tid;
     size_t       wid;
@@ -242,7 +242,7 @@ static void set_speculative_tasks (m_host_t worker)
  * @brief  Choose a map task, and send it to a worker.
  * @param  dest  The destination worker.
  */
-static void send_map_to_worker (m_host_t dest)
+static void send_map_to_worker (msg_host_t dest)
 {
     char*   flags;
     int     task_type;
@@ -333,7 +333,7 @@ static void send_map_to_worker (m_host_t dest)
  * @brief  Choose a reduce task, and send it to a worker.
  * @param  dest  The destination worker.
  */
-static void send_reduce_to_worker (m_host_t dest)
+static void send_reduce_to_worker (msg_host_t dest)
 {
     char*   flags;
     int     task_type;
@@ -390,12 +390,12 @@ static void send_reduce_to_worker (m_host_t dest)
  * @param  data_src  The ID of the DataNode that owns the task data.
  * @param  dest      The destination worker.
  */
-static void send_task (enum phase_e phase, size_t tid, size_t data_src, m_host_t dest)
+static void send_task (enum phase_e phase, size_t tid, size_t data_src, msg_host_t dest)
 {
     char         mailbox[MAILBOX_ALIAS_SIZE];
     int          i;
     double       cpu_required = 0.0;
-    m_task_t     task = NULL;
+    msg_task_t     task = NULL;
     task_info_t  task_info;
     size_t       wid;
 

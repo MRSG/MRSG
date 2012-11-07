@@ -78,7 +78,7 @@ struct job_s {
     int         tasks_pending[2];
     int*        task_has_spec_copy[2];
     int*        task_status[2];
-    m_task_t**  task_list[2];
+    msg_task_t**  task_list[2];
     size_t**    map_output;
 } job;
 
@@ -89,7 +89,7 @@ struct task_info_s {
     size_t        src;
     size_t        wid;
     int           pid;
-    m_task_t      task;
+    msg_task_t      task;
     size_t*       map_output_copied;
     double        shuffle_end;
 };
@@ -120,8 +120,8 @@ struct user_s {
     int (*map_output_f)(size_t mid, size_t rid);
 } user;
 
-m_host_t     master_host;
-m_host_t*    worker_hosts;
+msg_host_t     master_host;
+msg_host_t*    worker_hosts;
 heartbeat_t  w_heartbeat;
 
 /**
@@ -129,7 +129,7 @@ heartbeat_t  w_heartbeat;
  * @param  worker  The worker node.
  * @return The worker's ID number.
  */
-size_t get_worker_id (m_host_t worker);
+size_t get_worker_id (msg_host_t worker);
 
 /** 
  * @brief  Send a message/task.
@@ -154,7 +154,7 @@ void send_sms (const char* str, const char* mailbox);
  * @param  mailbox  The mailbox alias.
  * @return The status of the transfer.
  */
-MSG_error_t receive (m_task_t* msg, const char* mailbox);
+msg_error_t receive (msg_task_t* msg, const char* mailbox);
 
 /** 
  * @brief  Compare the message from a task with a string.
@@ -162,7 +162,7 @@ MSG_error_t receive (m_task_t* msg, const char* mailbox);
  * @param  str  The string to compare with.
  * @return A positive value if matches, zero if doesn't.
  */
-int message_is (m_task_t msg, const char* str);
+int message_is (msg_task_t msg, const char* str);
 
 /**
  * @brief  Return the maximum of two values.

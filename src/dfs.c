@@ -22,7 +22,7 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 XBT_LOG_EXTERNAL_DEFAULT_CATEGORY (msg_test);
 
 
-static void send_data (m_task_t msg);
+static void send_data (msg_task_t msg);
 
 
 void distribute_data (void)
@@ -103,7 +103,7 @@ size_t find_random_chunk_owner (int cid)
 int data_node (int argc, char* argv[])
 {
     char      mailbox[MAILBOX_ALIAS_SIZE];
-    m_task_t  msg = NULL;
+    msg_task_t  msg = NULL;
 
     sprintf (mailbox, DATANODE_MAILBOX, get_worker_id (MSG_host_self ()));
 
@@ -117,7 +117,7 @@ int data_node (int argc, char* argv[])
     return 0;
 }
 
-static void send_data (m_task_t msg)
+static void send_data (msg_task_t msg)
 {
     char         mailbox[MAILBOX_ALIAS_SIZE];
     double       data_size;
