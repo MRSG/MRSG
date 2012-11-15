@@ -43,7 +43,7 @@ int main (int argc, char* argv[])
     /* Set the map output function. */
     MRSG_set_map_output_f (my_map_output_function);
     /* Run the simulation. */
-    MRSG_main ("g5k.xml", "g5k-deploy.xml", "hello.conf");
+    MRSG_main ("g5k.xml", "hello.deploy.xml", "hello.conf");
 
     return 0;
 }
