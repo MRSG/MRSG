@@ -5,7 +5,10 @@ INCLUDES = -I../include
 DEFS = -L$(INSTALL_PATH)/lib
 LDADD = -lm -lsimgrid
 
-all: hello.bin
+SRC=$(wildcard *.c)
+BIN=$(SRC:.c=.bin)
+
+all: $(BIN)
 
 %.bin: %.c
 	$(CC) $(INCLUDES) $(DEFS) -o $@ $^ ../libmrsg.a $(LDADD)
