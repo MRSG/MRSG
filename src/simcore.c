@@ -192,7 +192,6 @@ static void init_config (void)
     master_host = NULL;
     config.number_of_workers = 0;
 
-    XBT_INFO("%d",MSG_process_get_number());//FIXME
     process_list = MSG_processes_as_dynar ();
     xbt_dynar_foreach (process_list, cursor, process)
     {
