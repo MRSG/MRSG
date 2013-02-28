@@ -1,7 +1,7 @@
 
 To run the example, follow these steps:
 
-1) Make sure you have installed SimGrid (3.8.1 recommended).
+1) Make sure you have installed SimGrid (3.9 recommended).
    (http://simgrid.gforge.inria.fr/)
 
 2) Inside MRSG's root and examples directories, edit the Makefiles and change

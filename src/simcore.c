@@ -35,7 +35,6 @@ static msg_error_t run_simulation (const char* platform_file, const char* deploy
 static void init_mr_config (const char* mr_config_file);
 static void read_mr_config_file (const char* file_name);
 static void init_config (void);
-static const char* get_process_name (msg_host_t host);
 static void init_job (void);
 static void init_stats (void);
 static void free_global_mem (void);
@@ -181,32 +180,52 @@ static void read_mr_config_file (const char* file_name)
  */
 static void init_config (void)
 {
-    const char*   process_name = NULL;
-    msg_host_t      host;
-    size_t        wid;
-    unsigned int  cursor;
-    xbt_dynar_t   host_list;
+    const char*    process_name = NULL;
+    msg_host_t     host;
+    msg_process_t  process;
+    size_t         wid;
+    unsigned int   cursor;
+    xbt_dynar_t    process_list;
 
     /* Initialize hosts information. */
 
     master_host = NULL;
     config.number_of_workers = 0;
 
-    host_list = MSG_hosts_as_dynar ();
-
-    xbt_dynar_foreach (host_list, cursor, host)
+    XBT_INFO("%d",MSG_process_get_number());//FIXME
+    process_list = MSG_processes_as_dynar ();
+    xbt_dynar_foreach (process_list, cursor, process)
     {
-	process_name = get_process_name (host);
-	if (process_name != NULL)
-	{
-	    if ( strcmp (process_name, "worker") == 0 )
-		config.number_of_workers++;
-	    else if ( strcmp (process_name, "master") == 0 )
-		master_host = host;
-	}
+	process_name = MSG_process_get_name (process);
+	if ( strcmp (process_name, "worker") == 0 )
+	    config.number_of_workers++;
+	else if ( strcmp (process_name, "master") == 0 )
+	    master_host = MSG_process_get_host (process);
     }
 
     xbt_assert (master_host, "UNABLE TO IDENTIFY THE MASTER NODE");
+    worker_hosts = xbt_new (msg_host_t, config.number_of_workers);
+
+    wid = 0;
+    config.grid_cpu_power = 0.0;
+    xbt_dynar_foreach (process_list, cursor, process)
+    {
+	process_name = MSG_process_get_name (process);
+	host = MSG_process_get_host (process);
+	if ( strcmp (process_name, "worker") == 0 )
+	{
+	    worker_hosts[wid] = host;
+	    /* Set the worker ID as its data. */
+	    MSG_host_set_data (host, (void*)wid);
+	    /* Add the worker's cpu power to the grid total. */
+	    config.grid_cpu_power += MSG_get_host_speed (host);
+	    wid++;
+	}
+    }
+    config.grid_average_speed = config.grid_cpu_power / config.number_of_workers;
+    config.heartbeat_interval = maxval (3, config.number_of_workers / 100);
+    config.number_of_maps = config.chunk_count;
+    config.initialized = 1;
 
     w_heartbeat = xbt_new (struct heartbeat_s, config.number_of_workers);
     for (wid = 0; wid < config.number_of_workers; wid++)
@@ -214,67 +233,6 @@ static void init_config (void)
 	w_heartbeat[wid].slots_av[MAP] = config.map_slots;
 	w_heartbeat[wid].slots_av[REDUCE] = config.reduce_slots;
     }
-
-    worker_hosts = xbt_new (msg_host_t, config.number_of_workers);
-    config.grid_cpu_power = 0.0;
-
-    wid = 0;
-    xbt_dynar_foreach (host_list, cursor, host)
-    {
-	process_name = get_process_name (host);
-	if ( (process_name != NULL) && (strcmp (process_name, "worker") == 0) )
-	{
-	    worker_hosts[wid] = host;
-	    /* Set the worker ID as its data. */
-	    MSG_host_set_data (worker_hosts[wid], (void*) wid);
-	    /* Add the worker's cpu power to the grid total. */
-	    config.grid_cpu_power += MSG_get_host_speed (worker_hosts[wid]);
-
-	    wid++;
-	}
-    }
-
-    config.grid_average_speed = config.grid_cpu_power / config.number_of_workers;
-    config.heartbeat_interval = maxval (3, config.number_of_workers / 100);
-    config.number_of_maps = config.chunk_count;
-    config.initialized = 1;
-}
-
-/**
- * @brief  Get the name of the first process of a host.
- * @param  host  The host.
- * @return The pointer to the process name, or NULL if there is
- *         no process associated with the host.
- */
-static const char* get_process_name (msg_host_t host)
-{
-    int d1;
-
-    /*
-       >               d1
-       host->smx_host->process_list->head
-       64bit           16            0
-       32bit           8             0
-     */
-
-    switch (sizeof(void*))
-    {
-	case 4:
-	    /* 32 bit machine */
-	    d1 = 8;
-	    break;
-	case 8:
-	    /* 64 bit machine */
-	    d1 = 16;
-	    break;
-	default:
-	    xbt_abort ();
-    }
-
-    if ( (void*)(*(size_t*)(*(size_t*)((void*)host->smx_host + d1))) != NULL )
-	return MSG_process_get_name ((msg_process_t) (*(size_t*)(*(size_t*)((void*)host->smx_host + d1))));
-
-    return NULL;
 }
 
 /**
