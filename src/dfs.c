@@ -107,11 +107,19 @@ int data_node (int argc, char* argv[])
 
     sprintf (mailbox, DATANODE_MAILBOX, get_worker_id (MSG_host_self ()));
 
-    while (1)
+    while (!job.finished)
     {
 	msg = NULL;
 	receive (&msg, mailbox);
-	send_data (msg);
+	if (message_is (msg, SMS_FINISH))
+	{
+	    MSG_task_destroy (msg);
+	    break;
+	}
+	else
+	{
+	    send_data (msg);
+	}
     }
 
     return 0;

@@ -35,6 +35,7 @@ static void get_map_output (task_info_t ti);
  */
 int worker (int argc, char* argv[])
 {
+    char           mailbox[MAILBOX_ALIAS_SIZE];
     msg_host_t     me;
     msg_process_t  listen_p;
     msg_process_t  data_node_p;
@@ -48,8 +49,10 @@ int worker (int argc, char* argv[])
     /* Start sending heartbeat signals to the master node. */
     heartbeat ();
 
-    MSG_process_kill (data_node_p);
-    MSG_process_kill (listen_p);
+    sprintf (mailbox, DATANODE_MAILBOX, get_worker_id (me));
+    send_sms (SMS_FINISH, mailbox);
+    sprintf (mailbox, TASKTRACKER_MAILBOX, get_worker_id (me));
+    send_sms (SMS_FINISH, mailbox);
 
     return 0;
 }
@@ -59,7 +62,7 @@ int worker (int argc, char* argv[])
  */
 static void heartbeat (void)
 {
-    while (1)
+    while (!job.finished)
     {
 	send_sms (SMS_HEARTBEAT, MASTER_MAILBOX);
 	MSG_process_sleep (config.heartbeat_interval);
@@ -78,7 +81,7 @@ static int listen (int argc, char* argv[])
     me = MSG_host_self ();
     sprintf (mailbox, TASKTRACKER_MAILBOX, get_worker_id (me));
 
-    while (1)
+    while (!job.finished)
     {
 	msg = NULL;
 	receive (&msg, mailbox);
@@ -86,6 +89,11 @@ static int listen (int argc, char* argv[])
 	if (message_is (msg, SMS_TASK))
 	{
 	    MSG_process_create ("compute", compute, msg, me);
+	}
+	else if (message_is (msg, SMS_FINISH))
+	{
+	    MSG_task_destroy (msg);
+	    break;
 	}
     }
 
@@ -135,7 +143,8 @@ static int compute (int argc, char* argv[])
 
     w_heartbeat[ti->wid].slots_av[ti->phase]++;
     
-    send (SMS_TASK_DONE, 0.0, 0.0, ti, MASTER_MAILBOX);
+    if (!job.finished)
+	send (SMS_TASK_DONE, 0.0, 0.0, ti, MASTER_MAILBOX);
 
     return 0;
 }

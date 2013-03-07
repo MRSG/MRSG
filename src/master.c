@@ -118,11 +118,11 @@ int master (int argc, char* argv[])
 
     fclose (tasks_log);
 
+    job.finished = 1;
+
     print_config ();
     print_stats ();
     XBT_INFO ("JOB END");
-
-    MSG_process_killall (0);
 
     return 0;
 }

@@ -243,6 +243,8 @@ static void init_job (void)
 
     xbt_assert (config.initialized, "init_config has to be called before init_job");
 
+    job.finished = 0;
+
     /* Initialize map information. */
     job.tasks_pending[MAP] = config.number_of_maps;
     job.task_status[MAP] = xbt_new0 (int, config.number_of_maps);
