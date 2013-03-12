@@ -14,6 +14,6 @@ all: $(BIN)
 	$(CC) $(INCLUDES) $(DEFS) -o $@ $^ ../libmrsg.a $(LDADD)
 
 clean:
-	rm -vf *.bin *.log
+	rm -vf *.bin *.log *.trace *.plist
 
 .PHONY: clean

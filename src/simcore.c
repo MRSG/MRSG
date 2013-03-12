@@ -41,8 +41,18 @@ static void free_global_mem (void);
 
 int MRSG_main (const char* plat, const char* depl, const char* conf)
 {
-    int argc = 0;
-    char* argv[] = {"MRSG"};
+    int argc = 8;
+    char* argv[] = {
+	"mrsg",
+	"--cfg=tracing:1",
+	"--cfg=tracing/buffer:1",
+	"--cfg=tracing/filename:tracefile.trace",
+	"--cfg=tracing/categorized:1",
+	"--cfg=tracing/uncategorized:1",
+	"--cfg=viva/categorized:cat.plist",
+	"--cfg=viva/uncategorized:uncat.plist"
+    };
+
     msg_error_t  res = MSG_OK;
 
     config.initialized = 0;
@@ -79,6 +89,10 @@ static msg_error_t run_simulation (const char* platform_file, const char* deploy
     read_mr_config_file (mr_config_file);
 
     MSG_create_environment (platform_file);
+
+    // for tracing purposes..
+    TRACE_category_with_color ("MAP", "1 0 0");
+    TRACE_category_with_color ("REDUCE", "0 0 1");
 
     MSG_function_register ("master", master);
     MSG_function_register ("worker", worker);

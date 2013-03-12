@@ -413,6 +413,8 @@ static void send_task (enum phase_e phase, size_t tid, size_t data_src, msg_host
     task_info->task = task;
     task_info->shuffle_end = 0.0;
 
+    // for tracing purposes...
+    MSG_task_set_category (task, (phase==MAP?"MAP":"REDUCE"));
 
     if (job.task_status[phase][tid] != T_STATUS_TIP_SLOW)
 	job.task_status[phase][tid] = T_STATUS_TIP;
