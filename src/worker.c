@@ -37,15 +37,13 @@ int worker (int argc, char* argv[])
 {
     char           mailbox[MAILBOX_ALIAS_SIZE];
     msg_host_t     me;
-    msg_process_t  listen_p;
-    msg_process_t  data_node_p;
 
     me = MSG_host_self ();
 
     /* Spawn a process that listens for tasks. */
-    listen_p = MSG_process_create ("listen", listen, NULL, me);
+    MSG_process_create ("listen", listen, NULL, me);
     /* Spawn a process to exchange data with other workers. */
-    data_node_p = MSG_process_create ("data-node", data_node, NULL, me);
+    MSG_process_create ("data-node", data_node, NULL, me);
     /* Start sending heartbeat signals to the master node. */
     heartbeat ();
 
