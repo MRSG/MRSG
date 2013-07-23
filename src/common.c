@@ -24,9 +24,10 @@ size_t get_worker_id (msg_host_t worker)
     return (size_t) MSG_host_get_data (worker);
 }
 
-void send (const char* str, double cpu, double net, void* data, const char* mailbox)
+msg_error_t send (const char* str, double cpu, double net, void* data, const char* mailbox)
 {
-    msg_task_t  msg = NULL;
+    msg_error_t  status;
+    msg_task_t   msg = NULL;
 
     msg = MSG_task_create (str, cpu, net, data);
 
@@ -35,19 +36,33 @@ void send (const char* str, double cpu, double net, void* data, const char* mail
 	    XBT_INFO ("TX (%s): %s", mailbox, str);
 #endif
 
-    xbt_assert (MSG_task_send (msg, mailbox) == MSG_OK, "ERROR SENDING MESSAGE");
+    status = MSG_task_send (msg, mailbox);
+
+#ifdef VERBOSE
+    if (status != MSG_OK)
+	XBT_INFO ("ERROR %d SENDING MESSAGE: %s", status, str);
+#endif
+
+    return status;
 }
 
-void send_sms (const char* str, const char* mailbox)
+msg_error_t send_sms (const char* str, const char* mailbox)
 {
-    send (str, 0.0, 0.0, NULL, mailbox);
+    return send (str, 0.0, 0.0, NULL, mailbox);
 }
 
 msg_error_t receive (msg_task_t* msg, const char* mailbox)
 {
-    xbt_assert (MSG_task_receive (msg, mailbox) == MSG_OK, "ERROR RECEIVING MESSAGE");
+    msg_error_t  status;
 
-    return MSG_OK;
+    status = MSG_task_receive (msg, mailbox);
+
+#ifdef VERBOSE
+    if (status != MSG_OK)
+	XBT_INFO ("ERROR %d RECEIVING MESSAGE", status);
+#endif
+
+    return status;
 }
 
 int message_is (msg_task_t msg, const char* str)

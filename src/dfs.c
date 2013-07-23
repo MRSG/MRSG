@@ -17,6 +17,7 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include <msg/msg.h>
 #include "common.h"
+#include "worker.h"
 #include "dfs.h"
 
 XBT_LOG_EXTERNAL_DEFAULT_CATEGORY (msg_test);
@@ -102,23 +103,27 @@ size_t find_random_chunk_owner (int cid)
 
 int data_node (int argc, char* argv[])
 {
-    char      mailbox[MAILBOX_ALIAS_SIZE];
-    msg_task_t  msg = NULL;
+    char         mailbox[MAILBOX_ALIAS_SIZE];
+    msg_error_t  status;
+    msg_task_t   msg = NULL;
 
     sprintf (mailbox, DATANODE_MAILBOX, get_worker_id (MSG_host_self ()));
 
     while (!job.finished)
     {
 	msg = NULL;
-	receive (&msg, mailbox);
-	if (message_is (msg, SMS_FINISH))
+	status = receive (&msg, mailbox);
+	if (status == MSG_OK)
 	{
-	    MSG_task_destroy (msg);
-	    break;
-	}
-	else
-	{
-	    send_data (msg);
+	    if (message_is (msg, SMS_FINISH))
+	    {
+		MSG_task_destroy (msg);
+		break;
+	    }
+	    else
+	    {
+		send_data (msg);
+	    }
 	}
     }
 

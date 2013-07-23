@@ -19,6 +19,7 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 #include <stdio.h>
 #include <string.h>
 #include "common.h"
+#include "worker.h"
 #include "dfs.h"
 
 XBT_LOG_EXTERNAL_DEFAULT_CATEGORY (msg_test);
@@ -39,8 +40,9 @@ static void finish_all_task_copies (task_info_t ti);
 int master (int argc, char* argv[])
 {
     heartbeat_t  heartbeat;
-    msg_host_t     worker;
-    msg_task_t     msg = NULL;
+    msg_error_t  status;
+    msg_host_t   worker;
+    msg_task_t   msg = NULL;
     size_t       wid;
     task_info_t  ti;
 
@@ -52,68 +54,71 @@ int master (int argc, char* argv[])
     while (job.tasks_pending[MAP] + job.tasks_pending[REDUCE] > 0)
     {
 	msg = NULL;
-	receive (&msg, MASTER_MAILBOX);
-	worker = MSG_task_get_source (msg);
-	wid = get_worker_id (worker);
-
-	if (message_is (msg, SMS_HEARTBEAT))
+	status = receive (&msg, MASTER_MAILBOX);
+	if (status == MSG_OK)
 	{
-	    heartbeat = &w_heartbeat[wid];
+	    worker = MSG_task_get_source (msg);
+	    wid = get_worker_id (worker);
 
-	    if (is_straggler (worker))
+	    if (message_is (msg, SMS_HEARTBEAT))
 	    {
-		set_speculative_tasks (worker);
+		heartbeat = &job.heartbeats[wid];
+
+		if (is_straggler (worker))
+		{
+		    set_speculative_tasks (worker);
+		}
+		else
+		{
+		    if (heartbeat->slots_av[MAP] > 0)
+			send_map_to_worker (worker);
+
+		    if (heartbeat->slots_av[REDUCE] > 0)
+			send_reduce_to_worker (worker);
+		}
 	    }
-	    else
+	    else if (message_is (msg, SMS_TASK_DONE))
 	    {
-		if (heartbeat->slots_av[MAP] > 0)
-		    send_map_to_worker (worker);
+		ti = (task_info_t) MSG_task_get_data (msg);
 
-		if (heartbeat->slots_av[REDUCE] > 0)
-		    send_reduce_to_worker (worker);
-	    }
-	}
-	else if (message_is (msg, SMS_TASK_DONE))
-	{
-	    ti = (task_info_t) MSG_task_get_data (msg);
-
-	    switch (ti->phase)
-	    {
-		case MAP:
-		    if (job.task_status[MAP][ti->id] != T_STATUS_DONE)
-		    {
-			job.task_status[MAP][ti->id] = T_STATUS_DONE;
-			finish_all_task_copies (ti);
-			stats.maps_processed[wid]++;
-			job.tasks_pending[MAP]--;
-			if (job.tasks_pending[MAP] <= 0)
+		switch (ti->phase)
+		{
+		    case MAP:
+			if (job.task_status[MAP][ti->id] != T_STATUS_DONE)
 			{
-			    XBT_INFO (" ");
-			    XBT_INFO ("MAP PHASE DONE");
-			    XBT_INFO (" ");
+			    job.task_status[MAP][ti->id] = T_STATUS_DONE;
+			    finish_all_task_copies (ti);
+			    stats.maps_processed[wid]++;
+			    job.tasks_pending[MAP]--;
+			    if (job.tasks_pending[MAP] <= 0)
+			    {
+				XBT_INFO (" ");
+				XBT_INFO ("MAP PHASE DONE");
+				XBT_INFO (" ");
+			    }
 			}
-		    }
-		    break;
+			break;
 
-		case REDUCE:
-		    if (job.task_status[REDUCE][ti->id] != T_STATUS_DONE)
-		    {
-			job.task_status[REDUCE][ti->id] = T_STATUS_DONE;
-			finish_all_task_copies (ti);
-			stats.reduces_processed[wid]++;
-			job.tasks_pending[REDUCE]--;
-			if (job.tasks_pending[REDUCE] <= 0)
+		    case REDUCE:
+			if (job.task_status[REDUCE][ti->id] != T_STATUS_DONE)
 			{
-			    XBT_INFO (" ");
-			    XBT_INFO ("REDUCE PHASE DONE");
-			    XBT_INFO (" ");
+			    job.task_status[REDUCE][ti->id] = T_STATUS_DONE;
+			    finish_all_task_copies (ti);
+			    stats.reduces_processed[wid]++;
+			    job.tasks_pending[REDUCE]--;
+			    if (job.tasks_pending[REDUCE] <= 0)
+			    {
+				XBT_INFO (" ");
+				XBT_INFO ("REDUCE PHASE DONE");
+				XBT_INFO (" ");
+			    }
 			}
-		    }
-		    break;
+			break;
+		}
+		xbt_free_ref (&ti);
 	    }
-	    xbt_free_ref (&ti);
+	    MSG_task_destroy (msg);
 	}
-	MSG_task_destroy (msg);
     }
 
     fclose (tasks_log);
@@ -131,13 +136,13 @@ int master (int argc, char* argv[])
 static void print_config (void)
 {
     XBT_INFO ("JOB CONFIGURATION:");
-    XBT_INFO ("slots: %d map, %d reduce", config.map_slots, config.reduce_slots);
+    XBT_INFO ("slots: %d map, %d reduce", config.slots[MAP], config.slots[REDUCE]);
     XBT_INFO ("chunk replicas: %d", config.chunk_replicas);
     XBT_INFO ("chunk size: %.0f MB", config.chunk_size/1024/1024);
     XBT_INFO ("input chunks: %d", config.chunk_count);
     XBT_INFO ("input size: %d MB", config.chunk_count * (int)(config.chunk_size/1024/1024));
-    XBT_INFO ("maps: %d", config.number_of_maps);
-    XBT_INFO ("reduces: %d", config.number_of_reduces);
+    XBT_INFO ("maps: %d", config.amount_of_tasks[MAP]);
+    XBT_INFO ("reduces: %d", config.amount_of_tasks[REDUCE]);
     XBT_INFO ("workers: %d", config.number_of_workers);
     XBT_INFO ("grid power: %g flops", config.grid_cpu_power);
     XBT_INFO ("average power: %g flops/s", config.grid_average_speed);
@@ -172,7 +177,7 @@ static int is_straggler (msg_host_t worker)
 
     wid = get_worker_id (worker);
 
-    task_count = (config.map_slots + config.reduce_slots) - (w_heartbeat[wid].slots_av[MAP] + w_heartbeat[wid].slots_av[REDUCE]);
+    task_count = (config.slots[MAP] + config.slots[REDUCE]) - (job.heartbeats[wid].slots_av[MAP] + job.heartbeats[wid].slots_av[REDUCE]);
 
     if (MSG_get_host_speed (worker) < config.grid_average_speed && task_count > 0)
 	return 1;
@@ -192,7 +197,7 @@ static int task_time_elapsed (msg_task_t task)
     ti = (task_info_t) MSG_task_get_data (task);
 
     return (MSG_task_get_compute_duration (task) - MSG_task_get_remaining_computation (task))
-	/ MSG_get_host_speed (worker_hosts[ti->wid]);
+	/ MSG_get_host_speed (config.workers[ti->wid]);
 }
 
 /**
@@ -207,14 +212,14 @@ static void set_speculative_tasks (msg_host_t worker)
 
     wid = get_worker_id (worker);
 
-    if (w_heartbeat[wid].slots_av[MAP] < config.map_slots)
+    if (job.heartbeats[wid].slots_av[MAP] < config.slots[MAP])
     {
-	for (tid = 0; tid < config.number_of_maps; tid++)
+	for (tid = 0; tid < config.amount_of_tasks[MAP]; tid++)
 	{
-	    if (job.task_list[MAP][0][tid] != NULL)
+	    if (job.task_list[MAP][tid][0] != NULL)
 	    {
-		ti = (task_info_t) MSG_task_get_data (job.task_list[MAP][0][tid]);
-		if (ti->wid == wid && task_time_elapsed (job.task_list[MAP][0][tid]) > 60)
+		ti = (task_info_t) MSG_task_get_data (job.task_list[MAP][tid][0]);
+		if (ti->wid == wid && task_time_elapsed (job.task_list[MAP][tid][0]) > 60)
 		{
 		    job.task_status[MAP][tid] = T_STATUS_TIP_SLOW;
 		}
@@ -222,14 +227,14 @@ static void set_speculative_tasks (msg_host_t worker)
 	}
     }
 
-    if (w_heartbeat[wid].slots_av[REDUCE] < config.reduce_slots)
+    if (job.heartbeats[wid].slots_av[REDUCE] < config.slots[REDUCE])
     {
-	for (tid = 0; tid < config.number_of_reduces; tid++)
+	for (tid = 0; tid < config.amount_of_tasks[REDUCE]; tid++)
 	{
-	    if (job.task_list[REDUCE][0][tid] != NULL)
+	    if (job.task_list[REDUCE][tid][0] != NULL)
 	    {
-		ti = (task_info_t) MSG_task_get_data (job.task_list[REDUCE][0][tid]);
-		if (ti->wid == wid && task_time_elapsed (job.task_list[REDUCE][0][tid]) > 60)
+		ti = (task_info_t) MSG_task_get_data (job.task_list[REDUCE][tid][0]);
+		if (ti->wid == wid && task_time_elapsed (job.task_list[REDUCE][tid][0]) > 60)
 		{
 		    job.task_status[REDUCE][tid] = T_STATUS_TIP_SLOW;
 		}
@@ -278,7 +283,7 @@ static void send_map_to_worker (msg_host_t dest)
 	}
 	else if (job.task_status[MAP][chunk] == T_STATUS_TIP_SLOW
 		&& task_type > REMOTE
-		&& !job.task_has_spec_copy[MAP][chunk])
+		&& job.task_instances[MAP][chunk] < 2)
 	{
 	    if (chunk_owner[chunk][wid])
 	    {
@@ -310,14 +315,12 @@ static void send_map_to_worker (msg_host_t dest)
 	case LOCAL_SPEC:
 	    flags = "(speculative)";
 	    sid = wid;
-	    job.task_has_spec_copy[MAP][tid] = 1;
 	    stats.map_spec_l++;
 	    break;
 
 	case REMOTE_SPEC:
 	    flags = "(non-local, speculative)";
 	    sid = find_random_chunk_owner (tid);
-	    job.task_has_spec_copy[MAP][tid] = 1;
 	    stats.map_spec_r++;
 	    break;
 
@@ -340,13 +343,13 @@ static void send_reduce_to_worker (msg_host_t dest)
     size_t  t;
     size_t  tid = NONE;
 
-    if (job.tasks_pending[REDUCE] <= 0 || (float)job.tasks_pending[MAP]/config.number_of_maps > 0.9)
+    if (job.tasks_pending[REDUCE] <= 0 || (float)job.tasks_pending[MAP]/config.amount_of_tasks[MAP] > 0.9)
 	return;
 
     enum { NORMAL, SPECULATIVE, NO_TASK };
     task_type = NO_TASK;
 
-    for (t = 0; t < config.number_of_reduces; t++)
+    for (t = 0; t < config.amount_of_tasks[REDUCE]; t++)
     {
 	if (job.task_status[REDUCE][t] == T_STATUS_PENDING)
 	{
@@ -355,7 +358,7 @@ static void send_reduce_to_worker (msg_host_t dest)
 	    break;
 	}
 	else if (job.task_status[REDUCE][t] == T_STATUS_TIP_SLOW
-		&& !job.task_has_spec_copy[REDUCE][t])
+		&& job.task_instances[REDUCE][t] < 2)
 	{
 	    task_type = SPECULATIVE;
 	    tid = t;
@@ -371,7 +374,6 @@ static void send_reduce_to_worker (msg_host_t dest)
 
 	case SPECULATIVE:
 	    flags = "(speculative)";
-	    job.task_has_spec_copy[REDUCE][tid] = 1;
 	    stats.reduce_spec++;
 	    break;
 
@@ -395,7 +397,7 @@ static void send_task (enum phase_e phase, size_t tid, size_t data_src, msg_host
     char         mailbox[MAILBOX_ALIAS_SIZE];
     int          i;
     double       cpu_required = 0.0;
-    msg_task_t     task = NULL;
+    msg_task_t   task = NULL;
     task_info_t  task_info;
     size_t       wid;
 
@@ -419,13 +421,13 @@ static void send_task (enum phase_e phase, size_t tid, size_t data_src, msg_host
     if (job.task_status[phase][tid] != T_STATUS_TIP_SLOW)
 	job.task_status[phase][tid] = T_STATUS_TIP;
 
-    w_heartbeat[wid].slots_av[phase]--;
+    job.heartbeats[wid].slots_av[phase]--;
 
     for (i = 0; i < MAX_SPECULATIVE_COPIES; i++)
     {
-	if (job.task_list[phase][i][tid] == NULL)
+	if (job.task_list[phase][tid][i] == NULL)
 	{
-	    job.task_list[phase][i][tid] = task;
+	    job.task_list[phase][tid][i] = task;
 	    break;
 	}
     }
@@ -438,6 +440,8 @@ static void send_task (enum phase_e phase, size_t tid, size_t data_src, msg_host
 
     sprintf (mailbox, TASKTRACKER_MAILBOX, wid);
     xbt_assert (MSG_task_send (task, mailbox) == MSG_OK, "ERROR SENDING MESSAGE");
+
+    job.task_instances[phase][tid]++;
 }
 
 /**
@@ -452,11 +456,11 @@ static void finish_all_task_copies (task_info_t ti)
 
     for (i = 0; i < MAX_SPECULATIVE_COPIES; i++)
     {
-	if (job.task_list[phase][i][tid] != NULL)
+	if (job.task_list[phase][tid][i] != NULL)
 	{
-	    MSG_task_cancel (job.task_list[phase][i][tid]);
-	    //FIXME: MSG_task_destroy (job.task_list[phase][i][tid]);
-	    job.task_list[phase][i][tid] = NULL;
+	    MSG_task_cancel (job.task_list[phase][tid][i]);
+	    //FIXME: MSG_task_destroy (job.task_list[phase][tid][i]);
+	    job.task_list[phase][tid][i] = NULL;
 	    fprintf (tasks_log, "%d_%zu_%d\t-\t-\t%.3f\tEND\t%.3f\n", ti->phase, tid, i, MSG_get_clock (), ti->shuffle_end);
 	}
     }

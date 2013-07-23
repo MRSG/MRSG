@@ -17,6 +17,7 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include "common.h"
 #include "dfs.h"
+#include "worker.h"
 
 XBT_LOG_EXTERNAL_DEFAULT_CATEGORY (msg_test);
 
@@ -73,8 +74,9 @@ static void heartbeat (void)
 static int listen (int argc, char* argv[])
 {
     char         mailbox[MAILBOX_ALIAS_SIZE];
-    msg_host_t     me;
-    msg_task_t     msg = NULL;
+    msg_error_t  status;
+    msg_host_t   me;
+    msg_task_t   msg = NULL;
 
     me = MSG_host_self ();
     sprintf (mailbox, TASKTRACKER_MAILBOX, get_worker_id (me));
@@ -82,9 +84,9 @@ static int listen (int argc, char* argv[])
     while (!job.finished)
     {
 	msg = NULL;
-	receive (&msg, mailbox);
+	status = receive (&msg, mailbox);
 
-	if (message_is (msg, SMS_TASK))
+	if (status == MSG_OK && message_is (msg, SMS_TASK))
 	{
 	    MSG_process_create ("compute", compute, msg, me);
 	}
@@ -103,8 +105,8 @@ static int listen (int argc, char* argv[])
  */
 static int compute (int argc, char* argv[])
 {
-    msg_error_t  error;
-    msg_task_t     task;
+    msg_error_t  status;
+    msg_task_t   task;
     task_info_t  ti;
     xbt_ex_t     e;
 
@@ -127,9 +129,9 @@ static int compute (int argc, char* argv[])
     {
 	TRY
 	{
-	    error = MSG_task_execute (task);
+	    status = MSG_task_execute (task);
 
-	    if (ti->phase == MAP && error == MSG_OK)
+	    if (ti->phase == MAP && status == MSG_OK)
 		update_map_output (MSG_host_self (), ti->id);
 	}
 	CATCH (e)
@@ -139,7 +141,7 @@ static int compute (int argc, char* argv[])
 	}
     }
 
-    w_heartbeat[ti->wid].slots_av[ti->phase]++;
+    job.heartbeats[ti->wid].slots_av[ti->phase]++;
     
     if (!job.finished)
 	send (SMS_TASK_DONE, 0.0, 0.0, ti, MASTER_MAILBOX);
@@ -159,7 +161,7 @@ static void update_map_output (msg_host_t worker, size_t mid)
 
     wid = get_worker_id (worker);
 
-    for (rid = 0; rid < config.number_of_reduces; rid++)
+    for (rid = 0; rid < config.amount_of_tasks[REDUCE]; rid++)
 	job.map_output[wid][rid] += user.map_output_f (mid, rid);
 }
 
@@ -169,9 +171,10 @@ static void update_map_output (msg_host_t worker, size_t mid)
  */
 static void get_chunk (task_info_t ti)
 {
-    char      mailbox[MAILBOX_ALIAS_SIZE];
-    msg_task_t  data = NULL;
-    size_t    my_id;
+    char         mailbox[MAILBOX_ALIAS_SIZE];
+    msg_error_t  status;
+    msg_task_t   data = NULL;
+    size_t       my_id;
 
     my_id = get_worker_id (MSG_host_self ());
 
@@ -179,12 +182,14 @@ static void get_chunk (task_info_t ti)
     if (ti->src != my_id)
     {
 	sprintf (mailbox, DATANODE_MAILBOX, ti->src);
-	send_sms (SMS_GET_CHUNK, mailbox); 
-
-	sprintf (mailbox, TASK_MAILBOX, my_id, MSG_process_self_PID ());
-	receive (&data, mailbox);
-	
-	MSG_task_destroy (data);
+	status = send_sms (SMS_GET_CHUNK, mailbox);
+	if (status == MSG_OK)
+	{
+	    sprintf (mailbox, TASK_MAILBOX, my_id, MSG_process_self_PID ());
+	    status = receive (&data, mailbox);
+	    if (status == MSG_OK)
+		MSG_task_destroy (data);
+	}
     }
 }
 
@@ -194,20 +199,21 @@ static void get_chunk (task_info_t ti)
  */
 static void get_map_output (task_info_t ti)
 {
-    char      mailbox[MAILBOX_ALIAS_SIZE];
-    msg_task_t  data = NULL;
-    size_t    total_copied, must_copy;
-    size_t    mid;
-    size_t    my_id;
-    size_t    wid;
-    size_t*   data_copied;
+    char         mailbox[MAILBOX_ALIAS_SIZE];
+    msg_error_t  status;
+    msg_task_t   data = NULL;
+    size_t       total_copied, must_copy;
+    size_t       mid;
+    size_t       my_id;
+    size_t       wid;
+    size_t*      data_copied;
 
     my_id = get_worker_id (MSG_host_self ());
     data_copied = xbt_new0 (size_t, config.number_of_workers);
     ti->map_output_copied = data_copied;
     total_copied = 0;
     must_copy = 0;
-    for (mid = 0; mid < config.number_of_maps; mid++)
+    for (mid = 0; mid < config.amount_of_tasks[MAP]; mid++)
 	must_copy += user.map_output_f (mid, ti->id);
 
 #ifdef VERBOSE
@@ -227,14 +233,20 @@ static void get_map_output (task_info_t ti)
 	    if (job.map_output[wid][ti->id] > data_copied[wid])
 	    {
 		sprintf (mailbox, DATANODE_MAILBOX, wid);
-		send (SMS_GET_INTER_PAIRS, 0.0, 0.0, ti, mailbox);
-
-		sprintf (mailbox, TASK_MAILBOX, my_id, MSG_process_self_PID ());
-		data = NULL;
-		receive (&data, mailbox);
-		data_copied[wid] += MSG_task_get_data_size (data);
-		total_copied += MSG_task_get_data_size (data);
-		MSG_task_destroy (data);
+		status = send (SMS_GET_INTER_PAIRS, 0.0, 0.0, ti, mailbox);
+		if (status == MSG_OK)
+		{
+		    sprintf (mailbox, TASK_MAILBOX, my_id, MSG_process_self_PID ());
+		    data = NULL;
+		    //TODO Set a timeout: reduce.copy.backoff
+		    status = receive (&data, mailbox);
+		    if (status == MSG_OK)
+		    {
+			data_copied[wid] += MSG_task_get_data_size (data);
+			total_copied += MSG_task_get_data_size (data);
+			MSG_task_destroy (data);
+		    }
+		}
 	    }
 	}
 	/* (Hadoop 0.20.2) mapred/ReduceTask.java:1979 */

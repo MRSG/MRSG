@@ -133,9 +133,9 @@ static void read_mr_config_file (const char* file_name)
     config.chunk_size = 67108864;
     config.chunk_count = 0;
     config.chunk_replicas = 3;
-    config.map_slots = 2;
-    config.number_of_reduces = 1;
-    config.reduce_slots = 2;
+    config.slots[MAP] = 2;
+    config.amount_of_tasks[REDUCE] = 1;
+    config.slots[REDUCE] = 2;
 
     /* Read the user configuration file. */
 
@@ -160,15 +160,15 @@ static void read_mr_config_file (const char* file_name)
 	}
 	else if ( strcmp (property, "map_slots") == 0 )
 	{
-	    fscanf (file, "%d", &config.map_slots);
+	    fscanf (file, "%d", &config.slots[MAP]);
 	}
 	else if ( strcmp (property, "reduces") == 0 )
 	{
-	    fscanf (file, "%d", &config.number_of_reduces);
+	    fscanf (file, "%d", &config.amount_of_tasks[REDUCE]);
 	}
 	else if ( strcmp (property, "reduce_slots") == 0 )
 	{
-	    fscanf (file, "%d", &config.reduce_slots);
+	    fscanf (file, "%d", &config.slots[REDUCE]);
 	}
 	else
 	{
@@ -184,9 +184,9 @@ static void read_mr_config_file (const char* file_name)
     xbt_assert (config.chunk_size > 0, "Chunk size must be greater than zero");
     xbt_assert (config.chunk_count > 0, "The amount of input chunks must be greater than zero");
     xbt_assert (config.chunk_replicas > 0, "The amount of chunk replicas must be greater than zero");
-    xbt_assert (config.map_slots > 0, "Map slots must be greater than zero");
-    xbt_assert (config.number_of_reduces >= 0, "The number of reduce tasks can't be negative");
-    xbt_assert (config.reduce_slots > 0, "Reduce slots must be greater than zero");
+    xbt_assert (config.slots[MAP] > 0, "Map slots must be greater than zero");
+    xbt_assert (config.amount_of_tasks[REDUCE] >= 0, "The number of reduce tasks can't be negative");
+    xbt_assert (config.slots[REDUCE] > 0, "Reduce slots must be greater than zero");
 }
 
 /**
@@ -203,7 +203,6 @@ static void init_config (void)
 
     /* Initialize hosts information. */
 
-    master_host = NULL;
     config.number_of_workers = 0;
 
     process_list = MSG_processes_as_dynar ();
@@ -212,12 +211,9 @@ static void init_config (void)
 	process_name = MSG_process_get_name (process);
 	if ( strcmp (process_name, "worker") == 0 )
 	    config.number_of_workers++;
-	else if ( strcmp (process_name, "master") == 0 )
-	    master_host = MSG_process_get_host (process);
     }
 
-    xbt_assert (master_host, "UNABLE TO IDENTIFY THE MASTER NODE");
-    worker_hosts = xbt_new (msg_host_t, config.number_of_workers);
+    config.workers = xbt_new (msg_host_t, config.number_of_workers);
 
     wid = 0;
     config.grid_cpu_power = 0.0;
@@ -227,7 +223,7 @@ static void init_config (void)
 	host = MSG_process_get_host (process);
 	if ( strcmp (process_name, "worker") == 0 )
 	{
-	    worker_hosts[wid] = host;
+	    config.workers[wid] = host;
 	    /* Set the worker ID as its data. */
 	    MSG_host_set_data (host, (void*)wid);
 	    /* Add the worker's cpu power to the grid total. */
@@ -236,16 +232,9 @@ static void init_config (void)
 	}
     }
     config.grid_average_speed = config.grid_cpu_power / config.number_of_workers;
-    config.heartbeat_interval = maxval (3, config.number_of_workers / 100);
-    config.number_of_maps = config.chunk_count;
+    config.heartbeat_interval = maxval (HEARTBEAT_MIN_INTERVAL, config.number_of_workers / 100);
+    config.amount_of_tasks[MAP] = config.chunk_count;
     config.initialized = 1;
-
-    w_heartbeat = xbt_new (struct heartbeat_s, config.number_of_workers);
-    for (wid = 0; wid < config.number_of_workers; wid++)
-    {
-	w_heartbeat[wid].slots_av[MAP] = config.map_slots;
-	w_heartbeat[wid].slots_av[REDUCE] = config.reduce_slots;
-    }
 }
 
 /**
@@ -253,31 +242,38 @@ static void init_config (void)
  */
 static void init_job (void)
 {
-    int  i;
+    int     i;
+    size_t  wid;
 
     xbt_assert (config.initialized, "init_config has to be called before init_job");
 
     job.finished = 0;
+    job.heartbeats = xbt_new (struct heartbeat_s, config.number_of_workers);
+    for (wid = 0; wid < config.number_of_workers; wid++)
+    {
+	job.heartbeats[wid].slots_av[MAP] = config.slots[MAP];
+	job.heartbeats[wid].slots_av[REDUCE] = config.slots[REDUCE];
+    }
 
     /* Initialize map information. */
-    job.tasks_pending[MAP] = config.number_of_maps;
-    job.task_status[MAP] = xbt_new0 (int, config.number_of_maps);
-    job.task_has_spec_copy[MAP] = xbt_new0 (int, config.number_of_maps);
-    job.task_list[MAP] = xbt_new0 (msg_task_t*, MAX_SPECULATIVE_COPIES);
-    for (i = 0; i < MAX_SPECULATIVE_COPIES; i++)
-	job.task_list[MAP][i] = xbt_new0 (msg_task_t, config.number_of_maps);
+    job.tasks_pending[MAP] = config.amount_of_tasks[MAP];
+    job.task_status[MAP] = xbt_new0 (int, config.amount_of_tasks[MAP]);
+    job.task_instances[MAP] = xbt_new0 (int, config.amount_of_tasks[MAP]);
+    job.task_list[MAP] = xbt_new0 (msg_task_t*, config.amount_of_tasks[MAP]);
+    for (i = 0; i < config.amount_of_tasks[MAP]; i++)
+	job.task_list[MAP][i] = xbt_new0 (msg_task_t, MAX_SPECULATIVE_COPIES);
 
     job.map_output = xbt_new (size_t*, config.number_of_workers);
     for (i = 0; i < config.number_of_workers; i++)
-	job.map_output[i] = xbt_new0 (size_t, config.number_of_reduces);
+	job.map_output[i] = xbt_new0 (size_t, config.amount_of_tasks[REDUCE]);
 
     /* Initialize reduce information. */
-    job.tasks_pending[REDUCE] = config.number_of_reduces;
-    job.task_status[REDUCE] = xbt_new0 (int, config.number_of_reduces);
-    job.task_has_spec_copy[REDUCE] = xbt_new0 (int, config.number_of_reduces);
-    job.task_list[REDUCE] = xbt_new0 (msg_task_t*, MAX_SPECULATIVE_COPIES);
-    for (i = 0; i < MAX_SPECULATIVE_COPIES; i++)
-	job.task_list[REDUCE][i] = xbt_new0 (msg_task_t, config.number_of_reduces);
+    job.tasks_pending[REDUCE] = config.amount_of_tasks[REDUCE];
+    job.task_status[REDUCE] = xbt_new0 (int, config.amount_of_tasks[REDUCE]);
+    job.task_instances[REDUCE] = xbt_new0 (int, config.amount_of_tasks[REDUCE]);
+    job.task_list[REDUCE] = xbt_new0 (msg_task_t*, config.amount_of_tasks[REDUCE]);
+    for (i = 0; i < config.amount_of_tasks[REDUCE]; i++)
+	job.task_list[REDUCE][i] = xbt_new0 (msg_task_t, MAX_SPECULATIVE_COPIES);
 }
 
 /**
@@ -310,16 +306,16 @@ static void free_global_mem (void)
 
     xbt_free_ref (&stats.maps_processed);
 
-    xbt_free_ref (&worker_hosts);
+    xbt_free_ref (&config.workers);
     xbt_free_ref (&job.task_status[MAP]);
-    xbt_free_ref (&job.task_has_spec_copy[MAP]);
+    xbt_free_ref (&job.task_instances[MAP]);
     xbt_free_ref (&job.task_status[REDUCE]);
-    xbt_free_ref (&job.task_has_spec_copy[REDUCE]);
-    xbt_free_ref (&w_heartbeat);
-    for (i = 0; i < MAX_SPECULATIVE_COPIES; i++)
+    xbt_free_ref (&job.task_instances[REDUCE]);
+    xbt_free_ref (&job.heartbeats);
+    for (i = 0; i < config.amount_of_tasks[MAP]; i++)
 	xbt_free_ref (&job.task_list[MAP][i]);
     xbt_free_ref (&job.task_list[MAP]);
-    for (i = 0; i < MAX_SPECULATIVE_COPIES; i++)
+    for (i = 0; i < config.amount_of_tasks[REDUCE]; i++)
 	xbt_free_ref (&job.task_list[REDUCE][i]);
     xbt_free_ref (&job.task_list[REDUCE]);
     xbt_free_ref (&stats.reduces_processed);

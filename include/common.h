@@ -24,6 +24,9 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 #include <xbt/asserts.h>
 #include "mrsg.h"
 
+/* Hearbeat parameters. */
+#define HEARTBEAT_MIN_INTERVAL 3
+#define HEARTBEAT_TIMEOUT 600
 
 /* Short message names. */
 #define SMS_GET_CHUNK "SMS-GC"
@@ -43,13 +46,6 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 #define TASKTRACKER_MAILBOX "%zu:TT"
 #define TASK_MAILBOX "%zu:%d"
 
-/** @brief  Communication ports. */
-enum port_e {
-    PORT_MASTER,
-    PORT_DATA_REQ,
-    PORT_SLOTS_START
-};
-
 /** @brief  Possible task status. */
 enum task_status_e {
     /* The initial status must be the first enum. */
@@ -59,28 +55,35 @@ enum task_status_e {
     T_STATUS_DONE
 };
 
+/** @brief  Information sent by the workers with every heartbeat. */
+struct heartbeat_s {
+    int  slots_av[2];
+};
+
+typedef struct heartbeat_s* heartbeat_t;
+
 struct config_s {
-    double  chunk_size;
-    double  grid_average_speed;
-    double  grid_cpu_power;
-    int     chunk_count;
-    int     chunk_replicas;
-    int     heartbeat_interval;
-    int     map_slots;
-    int     number_of_maps;
-    int     number_of_reduces;
-    int     number_of_workers;
-    int     reduce_slots;
-    int     initialized;
+    double         chunk_size;
+    double         grid_average_speed;
+    double         grid_cpu_power;
+    int            chunk_count;
+    int            chunk_replicas;
+    int            heartbeat_interval;
+    int            amount_of_tasks[2];
+    int            number_of_workers;
+    int            slots[2];
+    int            initialized;
+    msg_host_t*    workers;
 } config;
 
 struct job_s {
-    int         finished;
-    int         tasks_pending[2];
-    int*        task_has_spec_copy[2];
-    int*        task_status[2];
+    int           finished;
+    int           tasks_pending[2];
+    int*          task_instances[2];
+    int*          task_status[2];
     msg_task_t**  task_list[2];
-    size_t**    map_output;
+    size_t**      map_output;
+    heartbeat_t   heartbeats;
 } job;
 
 /** @brief  Information sent as the task data. */
@@ -90,19 +93,12 @@ struct task_info_s {
     size_t        src;
     size_t        wid;
     int           pid;
-    msg_task_t      task;
+    msg_task_t    task;
     size_t*       map_output_copied;
     double        shuffle_end;
 };
 
 typedef struct task_info_s* task_info_t;
-
-/** @brief  Information sent by the workers with every heartbeat. */
-struct heartbeat_s {
-    int  slots_av[2];
-};
-
-typedef struct heartbeat_s* heartbeat_t;
 
 struct stats_s {
     int   map_local;
@@ -121,16 +117,6 @@ struct user_s {
     int (*map_output_f)(size_t mid, size_t rid);
 } user;
 
-msg_host_t     master_host;
-msg_host_t*    worker_hosts;
-heartbeat_t  w_heartbeat;
-
-/**
- * @brief  Get the ID of a worker.
- * @param  worker  The worker node.
- * @return The worker's ID number.
- */
-size_t get_worker_id (msg_host_t worker);
 
 /** 
  * @brief  Send a message/task.
@@ -139,15 +125,17 @@ size_t get_worker_id (msg_host_t worker);
  * @param  net      The message size in bytes.
  * @param  data     Any data to attatch to the message.
  * @param  mailbox  The destination mailbox alias.
+ * @return The MSG status of the operation.
  */
-void send (const char* str, double cpu, double net, void* data, const char* mailbox);
+msg_error_t send (const char* str, double cpu, double net, void* data, const char* mailbox);
 
 /** 
  * @brief  Send a short message, of size zero.
  * @param  str      The message.
  * @param  mailbox  The destination mailbox alias.
+ * @return The MSG status of the operation.
  */
-void send_sms (const char* str, const char* mailbox);
+msg_error_t send_sms (const char* str, const char* mailbox);
 
 /** 
  * @brief  Receive a message/task from a mailbox.
