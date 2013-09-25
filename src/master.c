@@ -49,7 +49,7 @@ int master (int argc, char* argv[])
     print_config ();
     XBT_INFO ("JOB BEGIN"); XBT_INFO (" ");
 
-    tasks_log = fopen ("tasks.log", "w");
+    tasks_log = fopen ("tasks.csv", "w");
 
     while (job.tasks_pending[MAP] + job.tasks_pending[REDUCE] > 0)
     {
@@ -432,7 +432,7 @@ static void send_task (enum phase_e phase, size_t tid, size_t data_src, msg_host
 	}
     }
 
-    fprintf (tasks_log, "%d_%zu_%d\t%s\t%zu\t%.3f\tSTART\n", phase, tid, i, (phase==MAP?"MAP":"REDUCE"), wid, MSG_get_clock ());
+    fprintf (tasks_log, "%d_%zu_%d,%s,%zu,%.3f,START\n", phase, tid, i, (phase==MAP?"MAP":"REDUCE"), wid, MSG_get_clock ());
 
 #ifdef VERBOSE
     XBT_INFO ("TX: %s > %s", SMS_TASK, MSG_host_get_name (dest));
@@ -461,7 +461,7 @@ static void finish_all_task_copies (task_info_t ti)
 	    MSG_task_cancel (job.task_list[phase][tid][i]);
 	    //FIXME: MSG_task_destroy (job.task_list[phase][tid][i]);
 	    job.task_list[phase][tid][i] = NULL;
-	    fprintf (tasks_log, "%d_%zu_%d\t-\t-\t%.3f\tEND\t%.3f\n", ti->phase, tid, i, MSG_get_clock (), ti->shuffle_end);
+	    fprintf (tasks_log, "%d_%zu_%d,,,%.3f,END,%.3f\n", ti->phase, tid, i, MSG_get_clock (), ti->shuffle_end);
 	}
     }
 }
