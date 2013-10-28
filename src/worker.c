@@ -203,7 +203,6 @@ static void get_map_output (task_info_t ti)
     msg_error_t  status;
     msg_task_t   data = NULL;
     size_t       total_copied, must_copy;
-    size_t       mid;
     size_t       my_id;
     size_t       wid;
     size_t*      data_copied;
@@ -212,9 +211,7 @@ static void get_map_output (task_info_t ti)
     data_copied = xbt_new0 (size_t, config.number_of_workers);
     ti->map_output_copied = data_copied;
     total_copied = 0;
-    must_copy = 0;
-    for (mid = 0; mid < config.amount_of_tasks[MAP]; mid++)
-	must_copy += user.map_output_f (mid, ti->id);
+    must_copy = reduce_input_size (ti->id);
 
 #ifdef VERBOSE
     XBT_INFO ("INFO: start copy");
