@@ -99,3 +99,21 @@ size_t map_output_size (size_t mid)
     return sum;
 }
 
+/**
+ * @brief  Return the input size of a reduce task.
+ * @param  rid  The reduce task ID.
+ * @return The task input size in bytes.
+ */
+size_t reduce_input_size (size_t rid)
+{
+    size_t  mid;
+    size_t  sum = 0;
+
+    for (mid = 0; mid < config.amount_of_tasks[MAP]; mid++)
+    {
+	sum += user.map_output_f (mid, rid);
+    }
+
+    return sum;
+}
+
