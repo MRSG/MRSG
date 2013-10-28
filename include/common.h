@@ -158,4 +158,6 @@ int message_is (msg_task_t msg, const char* str);
  */
 int maxval (int a, int b);
 
+size_t map_output_size (size_t mid);
+
 #endif /* !MRSG_COMMON_H */

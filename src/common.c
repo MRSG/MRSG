@@ -81,3 +81,21 @@ int maxval (int a, int b)
     return a;
 }
 
+/**
+ * @brief  Return the output size of a map task.
+ * @param  mid  The map task ID.
+ * @return The task output size in bytes.
+ */
+size_t map_output_size (size_t mid)
+{
+    size_t  rid;
+    size_t  sum = 0;
+
+    for (rid = 0; rid < config.amount_of_tasks[REDUCE]; rid++)
+    {
+	sum += user.map_output_f (mid, rid);
+    }
+
+    return sum;
+}
+
