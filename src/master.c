@@ -82,37 +82,17 @@ int master (int argc, char* argv[])
 	    {
 		ti = (task_info_t) MSG_task_get_data (msg);
 
-		switch (ti->phase)
+		if (job.task_status[ti->phase][ti->id] != T_STATUS_DONE)
 		{
-		    case MAP:
-			if (job.task_status[MAP][ti->id] != T_STATUS_DONE)
-			{
-			    job.task_status[MAP][ti->id] = T_STATUS_DONE;
-			    finish_all_task_copies (ti);
-			    job.tasks_pending[MAP]--;
-			    if (job.tasks_pending[MAP] <= 0)
-			    {
-				XBT_INFO (" ");
-				XBT_INFO ("MAP PHASE DONE");
-				XBT_INFO (" ");
-			    }
-			}
-			break;
-
-		    case REDUCE:
-			if (job.task_status[REDUCE][ti->id] != T_STATUS_DONE)
-			{
-			    job.task_status[REDUCE][ti->id] = T_STATUS_DONE;
-			    finish_all_task_copies (ti);
-			    job.tasks_pending[REDUCE]--;
-			    if (job.tasks_pending[REDUCE] <= 0)
-			    {
-				XBT_INFO (" ");
-				XBT_INFO ("REDUCE PHASE DONE");
-				XBT_INFO (" ");
-			    }
-			}
-			break;
+		    job.task_status[ti->phase][ti->id] = T_STATUS_DONE;
+		    finish_all_task_copies (ti);
+		    job.tasks_pending[ti->phase]--;
+		    if (job.tasks_pending[ti->phase] <= 0)
+		    {
+			XBT_INFO (" ");
+			XBT_INFO ("%s PHASE DONE", (ti->phase==MAP?"MAP":"REDUCE"));
+			XBT_INFO (" ");
+		    }
 		}
 		xbt_free_ref (&ti);
 	    }
