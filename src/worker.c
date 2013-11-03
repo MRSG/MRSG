@@ -28,6 +28,14 @@ static void update_map_output (msg_host_t worker, size_t mid);
 static void get_chunk (task_info_t ti);
 static void get_map_output (task_info_t ti);
 
+size_t get_worker_id (msg_host_t worker)
+{
+    w_info_t  wi;
+
+    wi = (w_info_t) MSG_host_get_data (worker);
+    return wi->wid;
+}
+
 /**
  * @brief  Main worker function.
  *

@@ -19,11 +19,6 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 
 XBT_LOG_EXTERNAL_DEFAULT_CATEGORY (msg_test);
 
-size_t get_worker_id (msg_host_t worker)
-{
-    return (size_t) MSG_host_get_data (worker);
-}
-
 msg_error_t send (const char* str, double cpu, double net, void* data, const char* mailbox)
 {
     msg_error_t  status;

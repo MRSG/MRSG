@@ -21,6 +21,10 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 /* hadoop-config: mapred.max.tracker.failures */
 #define MAXIMUM_WORKER_FAILURES 4
 
+typedef struct w_info_s {
+	size_t  wid;
+}* w_info_t;
+
 /**
  * @brief  Get the ID of a worker.
  * @param  worker  The worker node.

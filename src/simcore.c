@@ -20,6 +20,7 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 #include <xbt/log.h>
 #include <xbt/asserts.h>
 #include "common.h"
+#include "worker.h"
 #include "dfs.h"
 #include "mrsg.h"
 
@@ -199,6 +200,7 @@ static void init_config (void)
     msg_process_t  process;
     size_t         wid;
     unsigned int   cursor;
+    w_info_t       wi;
     xbt_dynar_t    process_list;
 
     /* Initialize hosts information. */
@@ -225,7 +227,9 @@ static void init_config (void)
 	{
 	    config.workers[wid] = host;
 	    /* Set the worker ID as its data. */
-	    MSG_host_set_data (host, (void*)wid);
+	    wi = xbt_new (struct w_info_s, 1);
+	    wi->wid = wid;
+	    MSG_host_set_data (host, (void*)wi);
 	    /* Add the worker's cpu power to the grid total. */
 	    config.grid_cpu_power += MSG_get_host_speed (host);
 	    wid++;
