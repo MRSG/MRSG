@@ -289,8 +289,6 @@ static void init_stats (void)
     stats.map_spec_r = 0;
     stats.reduce_normal = 0;
     stats.reduce_spec = 0;
-    stats.maps_processed = xbt_new0 (int, config.number_of_workers);
-    stats.reduces_processed = xbt_new0 (int, config.number_of_workers);
 }
 
 /**
@@ -304,8 +302,6 @@ static void free_global_mem (void)
 	xbt_free_ref (&chunk_owner[i]);
     xbt_free_ref (&chunk_owner);
 
-    xbt_free_ref (&stats.maps_processed);
-
     xbt_free_ref (&config.workers);
     xbt_free_ref (&job.task_status[MAP]);
     xbt_free_ref (&job.task_instances[MAP]);
@@ -318,6 +314,5 @@ static void free_global_mem (void)
     for (i = 0; i < config.amount_of_tasks[REDUCE]; i++)
 	xbt_free_ref (&job.task_list[REDUCE][i]);
     xbt_free_ref (&job.task_list[REDUCE]);
-    xbt_free_ref (&stats.reduces_processed);
 }
 

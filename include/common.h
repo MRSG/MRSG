@@ -107,8 +107,6 @@ struct stats_s {
     int   map_spec_r;
     int   reduce_normal;
     int   reduce_spec;
-    int*  maps_processed;
-    int*  reduces_processed;
 } stats;
 
 struct user_s {

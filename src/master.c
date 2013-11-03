@@ -89,7 +89,6 @@ int master (int argc, char* argv[])
 			{
 			    job.task_status[MAP][ti->id] = T_STATUS_DONE;
 			    finish_all_task_copies (ti);
-			    stats.maps_processed[wid]++;
 			    job.tasks_pending[MAP]--;
 			    if (job.tasks_pending[MAP] <= 0)
 			    {
@@ -105,7 +104,6 @@ int master (int argc, char* argv[])
 			{
 			    job.task_status[REDUCE][ti->id] = T_STATUS_DONE;
 			    finish_all_task_copies (ti);
-			    stats.reduces_processed[wid]++;
 			    job.tasks_pending[REDUCE]--;
 			    if (job.tasks_pending[REDUCE] <= 0)
 			    {
