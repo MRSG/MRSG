@@ -23,6 +23,7 @@ void MRSG_init (void)
 {
     user.task_cost_f = NULL;
     user.dfs_f = default_dfs_f;
+    user.map_output_f = NULL;
 }
 
 void MRSG_set_task_cost_f ( double (*f)(enum phase_e phase, size_t tid, size_t wid) )
