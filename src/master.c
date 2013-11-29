@@ -445,3 +445,4 @@ static void finish_all_task_copies (task_info_t ti)
     }
 }
 
+// vim: set ts=8 sw=4:

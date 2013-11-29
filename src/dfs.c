@@ -157,3 +157,4 @@ static void send_data (msg_task_t msg)
     MSG_task_destroy (msg);
 }
 
+// vim: set ts=8 sw=4:

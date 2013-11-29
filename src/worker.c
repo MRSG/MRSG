@@ -266,3 +266,4 @@ static void get_map_output (task_info_t ti)
     xbt_free_ref (&data_copied);
 }
 
+// vim: set ts=8 sw=4:

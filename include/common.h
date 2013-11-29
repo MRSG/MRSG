@@ -161,3 +161,5 @@ size_t map_output_size (size_t mid);
 size_t reduce_input_size (size_t rid);
 
 #endif /* !MRSG_COMMON_H */
+
+// vim: set ts=8 sw=4:

@@ -46,3 +46,5 @@ size_t find_random_chunk_owner (int cid);
 int data_node (int argc, char *argv[]);
 
 #endif /* !DFS_H */
+
+// vim: set ts=8 sw=4:

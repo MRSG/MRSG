@@ -41,3 +41,5 @@ void MRSG_set_map_output_f ( int (*f)(size_t mid, size_t rid) )
     user.map_output_f = f;
 }
 
+
+// vim: set ts=8 sw=4:
