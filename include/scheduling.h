@@ -15,29 +15,22 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 
-#ifndef MRSG_H
-#define MRSG_H
+#ifndef SCHEDULING_H
+#define SCHEDULING_H
 
-#include <stdlib.h>
+#include "common.h"
 
-/** @brief  Possible execution phases. */
-enum phase_e {
-    MAP,
-    REDUCE
-};
+/**
+ * @brief  Chooses a map or reduce task and send it to a worker.
+ * @param  phase  MAP or REDUCE.
+ * @param  wid  Worker id.
+ * @return Chosen task id.
+ */
+size_t default_scheduler_f (enum phase_e phase, size_t wid);
+size_t choose_default_map_task (size_t wid);
+size_t choose_default_reduce_task (size_t wid);
 
-void MRSG_init (void);
-
-int MRSG_main (const char* plat, const char* depl, const char* conf);
-
-void MRSG_set_task_cost_f ( double (*f)(enum phase_e phase, size_t tid, size_t wid) );
-
-void MRSG_set_dfs_f ( void (*f)(char** dfs_matrix, size_t chunks, size_t workers, int replicas) );
-
-void MRSG_set_map_output_f ( int (*f)(size_t mid, size_t rid) );
-
-void MRSG_set_scheduler_f ( size_t (*f)(enum phase_e phase, size_t wid) );
-
-#endif /* !MRSG_H */
+#endif /* !SCHEDULING_H */
 
 // vim: set ts=8 sw=4:
+

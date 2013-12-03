@@ -31,10 +31,12 @@ static void print_stats (void);
 static int is_straggler (msg_host_t worker);
 static int task_time_elapsed (msg_task_t task);
 static void set_speculative_tasks (msg_host_t worker);
-static void send_map_to_worker (msg_host_t dest);
-static void send_reduce_to_worker (msg_host_t dest);
-static void send_task (enum phase_e phase, size_t tid, size_t data_src, msg_host_t dest);
+static void send_scheduler_task (enum phase_e phase, size_t wid);
+static void update_stats (enum task_type_e task_type);
+static void send_task (enum phase_e phase, size_t tid, size_t data_src, size_t wid);
+char* task_type_string (enum task_type_e task_type);
 static void finish_all_task_copies (task_info_t ti);
+
 
 /** @brief  Main master function. */
 int master (int argc, char* argv[])
@@ -72,10 +74,10 @@ int master (int argc, char* argv[])
 		else
 		{
 		    if (heartbeat->slots_av[MAP] > 0)
-			send_map_to_worker (worker);
+			send_scheduler_task(MAP, wid);
 
 		    if (heartbeat->slots_av[REDUCE] > 0)
-			send_reduce_to_worker (worker);
+			send_scheduler_task(REDUCE, wid);
 		}
 	    }
 	    else if (message_is (msg, SMS_TASK_DONE))
@@ -222,146 +224,71 @@ static void set_speculative_tasks (msg_host_t worker)
     }
 }
 
-/**
- * @brief  Choose a map task, and send it to a worker.
- * @param  dest  The destination worker.
- */
-static void send_map_to_worker (msg_host_t dest)
+static void send_scheduler_task (enum phase_e phase, size_t wid)
 {
-    char*   flags;
-    int     task_type;
-    size_t  chunk;
-    size_t  sid = NONE;
-    size_t  tid = NONE;
-    size_t  wid;
+    size_t tid = user.scheduler_f (phase, wid);
 
-    if (job.tasks_pending[MAP] <= 0)
+    if (tid == NONE)
+    {
 	return;
-
-    enum { LOCAL, REMOTE, LOCAL_SPEC, REMOTE_SPEC, NO_TASK };
-    task_type = NO_TASK;
-
-    wid = get_worker_id (dest);
-
-    /* Look for a task for the worker. */
-    for (chunk = 0; chunk < config.chunk_count; chunk++)
-    {
-	if (job.task_status[MAP][chunk] == T_STATUS_PENDING)
-	{
-	    if (chunk_owner[chunk][wid])
-	    {
-		task_type = LOCAL;
-		tid = chunk;
-		break;
-	    }
-	    else
-	    {
-		task_type = REMOTE;
-		tid = chunk;
-	    }
-	}
-	else if (job.task_status[MAP][chunk] == T_STATUS_TIP_SLOW
-		&& task_type > REMOTE
-		&& job.task_instances[MAP][chunk] < 2)
-	{
-	    if (chunk_owner[chunk][wid])
-	    {
-		task_type = LOCAL_SPEC;
-		tid = chunk;
-	    }
-	    else if (task_type > LOCAL_SPEC)
-	    {
-		task_type = REMOTE_SPEC;
-		tid = chunk;
-	    }
-	}
     }
 
-    switch (task_type)
+    enum task_type_e task_type = get_task_type (phase, tid, wid);
+    size_t	     sid = NONE;
+
+    if (task_type == LOCAL || task_type == LOCAL_SPEC)
     {
-	case LOCAL:
-	    flags = "";
-	    sid = wid;
-	    stats.map_local++;
-	    break;
-
-	case REMOTE:
-	    flags = "(non-local)";
-	    sid = find_random_chunk_owner (tid);
-	    stats.map_remote++;
-	    break;
-
-	case LOCAL_SPEC:
-	    flags = "(speculative)";
-	    sid = wid;
-	    stats.map_spec_l++;
-	    break;
-
-	case REMOTE_SPEC:
-	    flags = "(non-local, speculative)";
-	    sid = find_random_chunk_owner (tid);
-	    stats.map_spec_r++;
-	    break;
-
-	default: return;
+	sid = wid;
+    }
+    else if (task_type == REMOTE || task_type == REMOTE_SPEC)
+    {
+	sid = find_random_chunk_owner (tid);
     }
 
-    XBT_INFO ("map %zu assigned to %s %s", tid, MSG_host_get_name (dest), flags);
+    XBT_INFO ("%s %zu assigned to %s %s", (phase==MAP?"map":"reduce"), tid,
+	    MSG_host_get_name (config.workers[wid]),
+	    task_type_string (task_type));
 
-    send_task (MAP, tid, sid, dest);
+    send_task (phase, tid, sid, wid);
+
+    update_stats (task_type);
 }
 
-/**
- * @brief  Choose a reduce task, and send it to a worker.
- * @param  dest  The destination worker.
- */
-static void send_reduce_to_worker (msg_host_t dest)
+enum task_type_e get_task_type (enum phase_e phase, size_t tid, size_t wid)
 {
-    char*   flags;
-    int     task_type;
-    size_t  t;
-    size_t  tid = NONE;
+    enum task_status_e task_status = job.task_status[phase][tid];
 
-    if (job.tasks_pending[REDUCE] <= 0 || (float)job.tasks_pending[MAP]/config.amount_of_tasks[MAP] > 0.9)
-	return;
-
-    enum { NORMAL, SPECULATIVE, NO_TASK };
-    task_type = NO_TASK;
-
-    for (t = 0; t < config.amount_of_tasks[REDUCE]; t++)
+    switch (phase)
     {
-	if (job.task_status[REDUCE][t] == T_STATUS_PENDING)
-	{
-	    task_type = NORMAL;
-	    tid = t;
-	    break;
-	}
-	else if (job.task_status[REDUCE][t] == T_STATUS_TIP_SLOW
-		&& job.task_instances[REDUCE][t] < 2)
-	{
-	    task_type = SPECULATIVE;
-	    tid = t;
-	}
+	case MAP:
+	    switch (task_status)
+	    {
+		case T_STATUS_PENDING:
+		    return chunk_owner[tid][wid]? LOCAL : REMOTE;
+
+		case T_STATUS_TIP_SLOW:
+		    return chunk_owner[tid][wid]? LOCAL_SPEC : REMOTE_SPEC;
+
+		default:
+		    return NO_TASK;
+	    }
+
+	case REDUCE:
+	    switch (task_status)
+	    {
+		case T_STATUS_PENDING:
+		    return NORMAL;
+
+		case T_STATUS_TIP_SLOW:
+		    return SPECULATIVE;
+
+		default:
+		    return NO_TASK;
+	    }
+
+	default:
+	    return NO_TASK;
     }
-
-    switch (task_type)
-    {
-	case NORMAL:
-	    flags = "";
-	    stats.reduce_normal++;
-	    break;
-
-	case SPECULATIVE:
-	    flags = "(speculative)";
-	    stats.reduce_spec++;
-	    break;
-
-	default: return;
-    }
-
-    XBT_INFO ("reduce %zu assigned to %s %s", tid, MSG_host_get_name (dest), flags);
-
-    send_task (REDUCE, tid, NONE, dest);
 }
 
 /**
@@ -369,18 +296,15 @@ static void send_reduce_to_worker (msg_host_t dest)
  * @param  phase     The current job phase.
  * @param  tid       The task ID.
  * @param  data_src  The ID of the DataNode that owns the task data.
- * @param  dest      The destination worker.
+ * @param  wid       The destination worker id.
  */
-static void send_task (enum phase_e phase, size_t tid, size_t data_src, msg_host_t dest)
+static void send_task (enum phase_e phase, size_t tid, size_t data_src, size_t wid)
 {
     char         mailbox[MAILBOX_ALIAS_SIZE];
     int          i;
     double       cpu_required = 0.0;
     msg_task_t   task = NULL;
     task_info_t  task_info;
-    size_t       wid;
-
-    wid = get_worker_id (dest);
 
     cpu_required = user.task_cost_f (phase, tid, wid);
 
@@ -414,13 +338,65 @@ static void send_task (enum phase_e phase, size_t tid, size_t data_src, msg_host
     fprintf (tasks_log, "%d_%zu_%d,%s,%zu,%.3f,START,\n", phase, tid, i, (phase==MAP?"MAP":"REDUCE"), wid, MSG_get_clock ());
 
 #ifdef VERBOSE
-    XBT_INFO ("TX: %s > %s", SMS_TASK, MSG_host_get_name (dest));
+    XBT_INFO ("TX: %s > %s", SMS_TASK, MSG_host_get_name (config.workers[wid]));
 #endif
 
     sprintf (mailbox, TASKTRACKER_MAILBOX, wid);
     xbt_assert (MSG_task_send (task, mailbox) == MSG_OK, "ERROR SENDING MESSAGE");
 
     job.task_instances[phase][tid]++;
+}
+
+static void update_stats (enum task_type_e task_type)
+{
+    switch (task_type)
+    {
+	case LOCAL:
+	    stats.map_local++;
+	    break;
+
+	case REMOTE:
+	    stats.map_remote++;
+	    break;
+
+	case LOCAL_SPEC:
+	    stats.map_spec_l++;
+	    break;
+
+	case REMOTE_SPEC:
+	    stats.map_spec_r++;
+	    break;
+
+	case NORMAL:
+	    stats.reduce_normal++;
+	    break;
+
+	case SPECULATIVE:
+	    stats.reduce_spec++;
+	    break;
+
+	default:
+	    return;
+    }
+}
+
+char* task_type_string (enum task_type_e task_type)
+{
+    switch (task_type)
+    {
+	case REMOTE:
+	    return "(non-local)";
+
+	case LOCAL_SPEC:
+	case SPECULATIVE:
+	    return "(speculative)";
+
+	case REMOTE_SPEC:
+	    return "(non-local, speculative)";
+
+	default:
+	    return "";
+    }
 }
 
 /**
