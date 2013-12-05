@@ -10,8 +10,11 @@ BIN=$(SRC:.c=.bin)
 
 all: $(BIN)
 
-%.bin: %.c
+%.bin: %.c ../libmrsg.a
 	$(CC) $(INCLUDES) $(DEFS) -o $@ $^ ../libmrsg.a $(LDADD)
+
+../libmrsg.a:
+	make -C ../
 
 clean:
 	rm -vf *.bin *.csv *.trace *.plist
