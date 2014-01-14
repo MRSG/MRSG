@@ -1,7 +1,7 @@
 CC = gcc
 
 INSTALL_PATH = $$HOME/simgrid
-INCLUDES = -I../include
+INCLUDES = -I../include -I$(INSTALL_PATH)/include
 DEFS = -L$(INSTALL_PATH)/lib
 LDADD = -lm -lsimgrid
 
@@ -11,7 +11,7 @@ BIN=$(SRC:.c=.bin)
 all: $(BIN)
 
 %.bin: %.c ../libmrsg.a
-	$(CC) $(INCLUDES) $(DEFS) -o $@ $^ ../libmrsg.a $(LDADD)
+	$(CC) $(INCLUDES) $(DEFS) -o $@ $^ $(LDADD)
 
 ../libmrsg.a:
 	make -C ../
