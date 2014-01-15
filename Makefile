@@ -7,7 +7,7 @@ DEFS = -L$(INSTALL_PATH)/lib
 LDADD = -lm -lsimgrid
 
 BIN = libmrsg.a
-OBJ = common.o simcore.o dfs.o master.o worker.o user.o
+OBJ = common.o simcore.o dfs.o master.o worker.o user.o scheduling.o
 
 all: $(BIN)
 

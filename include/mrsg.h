@@ -36,4 +36,8 @@ void MRSG_set_dfs_f ( void (*f)(char** dfs_matrix, size_t chunks, size_t workers
 
 void MRSG_set_map_output_f ( int (*f)(size_t mid, size_t rid) );
 
+void MRSG_set_scheduler_f ( size_t (*f)(enum phase_e phase, size_t wid) );
+
 #endif /* !MRSG_H */
+
+// vim: set ts=8 sw=4:

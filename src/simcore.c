@@ -320,3 +320,4 @@ static void free_global_mem (void)
     xbt_free_ref (&job.task_list[REDUCE]);
 }
 
+// vim: set ts=8 sw=4:

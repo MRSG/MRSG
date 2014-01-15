@@ -15,36 +15,22 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 
-#ifndef DFS_H
-#define DFS_H
+#ifndef SCHEDULING_H
+#define SCHEDULING_H
 
-/** @brief  Matrix that maps chunks to workers. */
-char**  chunk_owner;
-
-/**
- * @brief  Distribute chunks (and replicas) to DataNodes.
- */
-void distribute_data (void);
+#include "common.h"
 
 /**
- * @brief  Default data distribution algorithm.
+ * @brief  Chooses a map or reduce task and send it to a worker.
+ * @param  phase  MAP or REDUCE.
+ * @param  wid  Worker id.
+ * @return Chosen task id.
  */
-void default_dfs_f (char** dfs_matrix, size_t chunks, size_t workers, int replicas);
+size_t default_scheduler_f (enum phase_e phase, size_t wid);
+size_t choose_default_map_task (size_t wid);
+size_t choose_default_reduce_task (size_t wid);
 
-/**
- * @brief  Choose a random DataNode that owns a specific chunk.
- * @param  cid  The chunk ID.
- * @return The ID of the DataNode.
- */
-size_t find_random_chunk_owner (int cid);
-
-/**
- * @brief  DataNode main function.
- *
- * Process that listens for data requests.
- */
-int data_node (int argc, char *argv[]);
-
-#endif /* !DFS_H */
+#endif /* !SCHEDULING_H */
 
 // vim: set ts=8 sw=4:
+

@@ -55,6 +55,16 @@ enum task_status_e {
     T_STATUS_DONE
 };
 
+enum task_type_e {
+    LOCAL,
+    REMOTE,
+    LOCAL_SPEC,
+    REMOTE_SPEC,
+    NORMAL,
+    SPECULATIVE,
+    NO_TASK
+};
+
 /** @brief  Information sent by the workers with every heartbeat. */
 struct heartbeat_s {
     int  slots_av[2];
@@ -113,6 +123,7 @@ struct user_s {
     double (*task_cost_f)(enum phase_e phase, size_t tid, size_t wid);
     void (*dfs_f)(char** dfs_matrix, size_t chunks, size_t workers, int replicas);
     int (*map_output_f)(size_t mid, size_t rid);
+    size_t (*scheduler_f)(enum phase_e phase, size_t wid);
 } user;
 
 
@@ -160,4 +171,8 @@ size_t map_output_size (size_t mid);
 
 size_t reduce_input_size (size_t rid);
 
+enum task_type_e get_task_type (enum phase_e phase, size_t tid, size_t wid);
+
 #endif /* !MRSG_COMMON_H */
+
+// vim: set ts=8 sw=4:

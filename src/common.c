@@ -112,3 +112,4 @@ size_t reduce_input_size (size_t rid)
     return sum;
 }
 
+// vim: set ts=8 sw=4:
